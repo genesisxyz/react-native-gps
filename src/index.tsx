@@ -12,8 +12,28 @@ export type Location = {
   isFromMockProvider: boolean;
 };
 
+type DeepPartial<T> = {
+  [P in keyof T]?: DeepPartial<T[P]>;
+};
+
+export type Options = DeepPartial<{
+  android: {
+    notification: {
+      id: number;
+      contentTitle: string;
+      contentText: string;
+      channel: {
+        id: string;
+        name: string;
+        description: string;
+      };
+      smallIcon: string;
+    };
+  };
+}>;
+
 type GpsType = {
-  multiply(a: number, b: number): Promise<number>;
+  setOptions(options: Options): void;
   startService(): Promise<void>;
   stopService(): Promise<void>;
   requestPermissions(): Promise<void>;
@@ -32,6 +52,7 @@ const LocationTask = async (location: Location) => {
 AppRegistry.registerHeadlessTask('Location', () => LocationTask);
 
 export default {
+  setOptions: Gps.setOptions,
   async startBackgroundLocation() {
     await Gps.requestPermissions();
     await Gps.startService();

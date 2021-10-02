@@ -43,6 +43,13 @@ export default function App() {
   React.useEffect(() => {
     if (tracking && backgroundLocationStarted) {
       Gps.watchLocation((newLocation) => {
+        Gps.setOptions({
+          android: {
+            notification: {
+              contentText: `${newLocation.latitude};${newLocation.longitude}`,
+            },
+          },
+        });
         dispatch(gpsSlice.actions.addLocation(newLocation));
       });
     }

@@ -34,6 +34,8 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
 
     private var intentService: Intent? = null
 
+    // TODO: how to initialize it inline?
+    private var options: ReadableMap? = null;
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName,
@@ -46,6 +48,7 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
             mBound = true
             mStartPromise?.resolve(null)
             mStartPromise = null
+            mService?.updateOptions(options?.toHashMap())
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -60,9 +63,16 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     }
 
     @ReactMethod
+    fun setOptions(options: ReadableMap) {
+        this.options = options
+        mService?.updateOptions(options.toHashMap())
+    }
+
+    @ReactMethod
     fun startService(promise: Promise) {
         if (intentService == null) {
             intentService = Intent(reactContext, LocationUpdatesService::class.java)
+            intentService?.putExtra("options", options?.toHashMap());
             mStartPromise = promise
             reactContext.bindService(intentService, connection, Context.BIND_AUTO_CREATE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
