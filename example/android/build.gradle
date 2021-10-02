@@ -6,6 +6,8 @@ buildscript {
         minSdkVersion = 16
         compileSdkVersion = 29
         targetSdkVersion = 29
+        // https://github.com/react-native-maps/react-native-maps/blob/v0.29.3/docs/installation.md#build-configuration-on-android
+        playServicesVersion = "17.0.0"
     }
     repositories {
         google()

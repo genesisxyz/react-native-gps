@@ -9,8 +9,14 @@
     "start": "react-native start"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.15.8",
+    "@reduxjs/toolkit": "^1.6.1",
     "react": "16.13.1",
-    "react-native": "0.63.4"
+    "react-native": "0.63.4",
+    "react-native-config": "^1.4.4",
+    "react-native-maps": "^0.29.3",
+    "react-redux": "^7.2.5",
+    "redux-persist": "^6.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.10",

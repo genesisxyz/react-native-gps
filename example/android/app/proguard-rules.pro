@@ -8,3 +8,7 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# https://github.com/luggit/react-native-config/tree/v1.4.4#problems-with-proguard
+-keep class com.example.reactnativegps.BuildConfig { *; }
+-keepresources string/build_config_package
