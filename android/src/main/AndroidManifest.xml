@@ -11,6 +11,9 @@
 
     <service android:name=".LocationUpdatesService" android:foregroundServiceType="location" />
     <service android:name=".LocationEventService" />
+    <service android:name=".GeofenceUpdatesService" android:foregroundServiceType="location" />
+    <service android:name=".GeofenceIntentService" />
+    <service android:name=".GeofenceEventService" />
 
   </application>
 

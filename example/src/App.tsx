@@ -1,13 +1,20 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Button } from 'react-native';
-import Gps from 'react-native-gps';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import Gps, { Geofence } from 'react-native-gps';
+import MapView, {
+  Circle,
+  MapEvent,
+  Marker,
+  Polyline,
+  PROVIDER_GOOGLE,
+} from 'react-native-maps';
 import { useSelector } from 'react-redux';
 import type { RootState } from './store';
 import { useAppDispatch } from './store';
 import { gpsSlice } from './slices/gps';
 import { appSlice } from './slices/app';
+import { useState } from 'react';
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -20,22 +27,46 @@ export default function App() {
     (state: RootState) => state.app
   );
 
+  const [geofenceMarkers, setGeofenceMarkers] = useState<Geofence[]>([]);
+
   function toggleTracking() {
     dispatch(appSlice.actions.toggleTracking());
   }
 
   function clearLocations() {
     dispatch(gpsSlice.actions.clearLocations());
+    setGeofenceMarkers((state) => {
+      Gps.removeGeofences(state.map((geofenceMarker) => geofenceMarker.id));
+      return [];
+    });
+  }
+
+  function addGeofence(event: MapEvent) {
+    if (tracking && backgroundLocationStarted) {
+      const { coordinate } = event.nativeEvent;
+      const geofenceMarker: Geofence = {
+        ...coordinate,
+        id: `${latitude}${longitude}`,
+        radius: 300,
+      };
+      setGeofenceMarkers((state) => [...state, geofenceMarker]);
+      Gps.addGeofences([geofenceMarker]);
+    }
   }
 
   React.useEffect(() => {
     if (tracking) {
       Gps.startBackgroundLocation().then(() => {
-        dispatch(appSlice.actions.setBackgroundLocationStarted(true));
+        Gps.startBackgroundGeofence().then(() => {
+          dispatch(appSlice.actions.setBackgroundLocationStarted(true));
+        });
       });
     } else {
       Gps.stopBackgroundLocation().then(() => {
-        dispatch(appSlice.actions.setBackgroundLocationStarted(false));
+        Gps.stopBackgroundGeofence().then(() => {
+          setGeofenceMarkers([]);
+          dispatch(appSlice.actions.setBackgroundLocationStarted(false));
+        });
       });
     }
   }, [tracking, dispatch]);
@@ -75,9 +106,22 @@ export default function App() {
           latitudeDelta: 0.015,
           longitudeDelta: 0.0121,
         }}
+        onPress={addGeofence}
       >
         <Marker coordinate={{ latitude, longitude }} />
         <Polyline coordinates={locations} strokeWidth={6} />
+        {geofenceMarkers.map((geofenceMaker) => (
+          <Circle
+            key={geofenceMaker.id}
+            center={{
+              latitude: geofenceMaker.latitude,
+              longitude: geofenceMaker.longitude,
+            }}
+            radius={geofenceMaker.radius}
+            fillColor="#ff000016"
+            strokeColor="#f00"
+          />
+        ))}
       </MapView>
     </View>
   );

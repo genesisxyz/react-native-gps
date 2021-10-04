@@ -1,25 +1,17 @@
 package com.reactnativegps
 
 import android.app.*
-import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.*
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import com.facebook.react.HeadlessJsTaskService
-import com.facebook.react.bridge.ReadableMap
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
 
-class LocationUpdatesService : Service() {
+class LocationUpdatesService : Service(), ServiceInterface {
     companion object {
         private const val TAG = "LocationUpdatesService"
-        private const val NOTIFICATION_ID = 12345678
-        private const val NOTIFICATION_CHANNEL_ID = "location"
-        private const val NOTIFICATION_CONTENT_TITLE = "GPS"
-        private const val NOTIFICATION_CONTENT_TEXT = "Tracking enabled"
-        private const val NOTIFICATION_SMALL_ICON = "ic_launcher"
 
         /**
          * The desired interval for location updates. Inexact. Updates may be more or less frequent.
@@ -50,35 +42,15 @@ class LocationUpdatesService : Service() {
     private var mServiceHandler: Handler? = null
     private var mLocationUpdatesTask: Task<*>? = null
 
-    private val binder: IBinder = LocationUpdatesBinder()
+    private val binder: IBinder = UpdatesBinder()
 
     private var isBound = false
 
-    private var notificationId = NOTIFICATION_ID
-    private var notificationChannelId = NOTIFICATION_CHANNEL_ID
-    private var notificationContentTitle = NOTIFICATION_CONTENT_TITLE
-    private var notificationContentText = NOTIFICATION_CONTENT_TEXT
-    private var notificationChannelName = NOTIFICATION_CONTENT_TEXT
-    private var notificationChannelDescription = NOTIFICATION_CONTENT_TEXT
-    private var notificationSmallIcon = NOTIFICATION_SMALL_ICON
-
-    private var notificationBuilder: NotificationCompat.Builder? = null
-
-    inner class LocationUpdatesBinder() : Binder() {
+    inner class UpdatesBinder() : Binder(), ServiceBinderInterface {
         // Return this instance of LocalService so clients can call public methods
-        val service: LocationUpdatesService
+        override val service: LocationUpdatesService
             get() =// Return this instance of LocalService so clients can call public methods
                 this@LocationUpdatesService
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(notificationChannelId, notificationChannelName, importance)
-            channel.description = notificationChannelDescription;
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
     }
 
     //region binding
@@ -129,12 +101,14 @@ class LocationUpdatesService : Service() {
             }
         }
 
+        requestLocationUpdates()
+
         val handlerThread = HandlerThread(TAG)
         handlerThread.start()
         mServiceHandler = Handler(handlerThread.looper)
     }
 
-    fun requestLocationUpdates(): Task<*>? {
+    private fun requestLocationUpdates(): Task<*>? {
         Log.i(TAG, "Request location updates")
         val locationRequest = createLocationRequest()
         return try {
@@ -147,7 +121,7 @@ class LocationUpdatesService : Service() {
         }
     }
 
-    fun removeLocationUpdates(): Task<Void>? {
+    private fun removeLocationUpdates(): Task<Void>? {
         Log.i(TAG, "Removing location updates")
         return try {
             val task = mFusedLocationClient?.removeLocationUpdates(mLocationCallback)
@@ -220,6 +194,7 @@ class LocationUpdatesService : Service() {
     }
 
     override fun onDestroy() {
+        removeLocationUpdates()
         mServiceHandler?.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -233,72 +208,12 @@ class LocationUpdatesService : Service() {
     }
 
     private fun startForeground() {
-        createNotificationChannel()
-        val smallIconId = applicationContext.resources.getIdentifier(notificationSmallIcon, "mipmap", applicationContext.packageName);
-        notificationBuilder = NotificationCompat.Builder(applicationContext, notificationChannelId)
-                .setContentTitle(notificationContentTitle)
-                .setContentText(notificationContentText)
-                .setSmallIcon(smallIconId)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-        val notification = notificationBuilder!!.build()
-        startForeground(notificationId, notification)
+        Notification.createNotificationChannel(applicationContext)
+        val notification = Notification.getNotification(applicationContext)
+        startForeground(Notification.notificationId, notification)
     }
 
-    fun updateOptions(options: HashMap<String, Any>?) {
-        val androidOptions = options?.get("android") as HashMap<String, Any>?;
+    override fun updateOptions(options: HashMap<String, Any>?) {
 
-        val notificationOptions = androidOptions?.get("notification") as HashMap<String, Any>?;
-        val newNotificationId = notificationOptions?.get("id") as Int?;
-        val newNotificationContentTitle = notificationOptions?.get("contentTitle") as String?;
-        val newNotificationContentText = notificationOptions?.get("contentText") as String?;
-        val newNotificationSmallIcon = notificationOptions?.get("smallIcon") as String?;
-
-        val notificationChannelOptions = androidOptions?.get("channel") as HashMap<String, Any>?;
-        val newNotificationChannelId = notificationChannelOptions?.get("id") as String?;
-        val newNotificationChannelName = notificationChannelOptions?.get("name") as String?;
-        val newNotificationChannelDescription = notificationChannelOptions?.get("description") as String?;
-
-        if (newNotificationId != null) {
-            notificationId = newNotificationId
-        }
-
-        if (newNotificationChannelId != null) {
-            notificationChannelId = newNotificationChannelId
-        }
-
-        if (newNotificationContentTitle != null) {
-            notificationContentTitle = newNotificationContentTitle
-        }
-
-        if (newNotificationContentText != null) {
-            notificationContentText = newNotificationContentText
-        }
-
-        if (newNotificationChannelName != null) {
-            notificationChannelName = newNotificationChannelName
-        }
-
-        if (newNotificationChannelDescription != null) {
-            notificationChannelDescription = newNotificationChannelDescription
-        }
-
-        if (newNotificationSmallIcon != null) {
-            notificationSmallIcon = newNotificationSmallIcon
-        }
-
-        notificationBuilder?.run {
-            val smallIconId = applicationContext.resources.getIdentifier(notificationSmallIcon, "mipmap", applicationContext.packageName);
-
-            setContentTitle(notificationContentTitle)
-            setContentText(notificationContentText)
-            setSmallIcon(smallIconId)
-
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
-            notificationManager.notify(
-                    notificationId,
-                    build()
-            );
-        }
     }
 }

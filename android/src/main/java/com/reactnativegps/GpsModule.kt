@@ -1,18 +1,15 @@
 package com.reactnativegps
 
 import android.Manifest
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.IBinder
+import android.os.Bundle
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
+import com.google.android.gms.tasks.OnFailureListener
+import com.google.android.gms.tasks.OnSuccessListener
 
 class GpsModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), LifecycleEventListener, PermissionListener {
 
@@ -24,39 +21,10 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         reactContext.addLifecycleEventListener(this);
     }
 
-    private var mBound = false
-
-    private var mService: LocationUpdatesService? = null
-
-    private var mStartPromise: Promise? = null
+    private val locationServiceConnection = ConnectService(reactContext, LocationUpdatesService::class.java)
+    private val geofenceServiceConnection = ConnectService(reactContext, GeofenceUpdatesService::class.java)
 
     private var mRequestPermissionsPromise: Promise? = null
-
-    private var intentService: Intent? = null
-
-    // TODO: how to initialize it inline?
-    private var options: ReadableMap? = null;
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(className: ComponentName,
-                                        service: IBinder) {
-            Log.i(TAG, "Intent service started")
-            Log.i(TAG, "onServiceConnected")
-
-            val binder: LocationUpdatesService.LocationUpdatesBinder = service as LocationUpdatesService.LocationUpdatesBinder
-            mService = binder.service
-            mBound = true
-            mStartPromise?.resolve(null)
-            mStartPromise = null
-            mService?.updateOptions(options?.toHashMap())
-        }
-
-        override fun onServiceDisconnected(arg0: ComponentName) {
-            // TODO: why is this never called?
-            Log.i(TAG, "onServiceDisconnected")
-            mBound = false
-        }
-    }
 
     override fun getName(): String {
         return "Gps"
@@ -64,72 +32,29 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
 
     @ReactMethod
     fun setOptions(options: ReadableMap) {
-        this.options = options
-        mService?.updateOptions(options.toHashMap())
+        locationServiceConnection.setOptions(options)
+        geofenceServiceConnection.setOptions(options)
+        Notification.updateNotification(reactContext, options.toHashMap())
     }
 
     @ReactMethod
-    fun startService(promise: Promise) {
-        if (intentService == null) {
-            intentService = Intent(reactContext, LocationUpdatesService::class.java)
-            intentService?.putExtra("options", options?.toHashMap());
-            mStartPromise = promise
-            reactContext.bindService(intentService, connection, Context.BIND_AUTO_CREATE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                reactContext.startService(intentService)
-            } else {
-                reactContext.startService(intentService)
-            }
-        } else {
-            Log.w(TAG, "Intent service is running")
-            promise.resolve(null)
-        }
+    fun startLocationService(promise: Promise) {
+        locationServiceConnection.startService(promise)
     }
 
     @ReactMethod
-    fun stopService(promise: Promise) {
-        if (intentService != null) {
-            reactContext.unbindService(connection)
-            reactContext.stopService(intentService)
-            //
-            // mBound = false
-            mService = null
-            intentService = null
-            Log.i(TAG, "Intent service stopped")
-        } else {
-            Log.w(TAG, "Intent service is not running")
-        }
-        promise.resolve(null)
+    fun stopLocationService(promise: Promise) {
+        locationServiceConnection.stopService(promise)
     }
 
     @ReactMethod
-    fun requestLocationUpdates(promise: Promise) {
-        if (mService != null) {
-            mService?.requestLocationUpdates()?.addOnSuccessListener {
-                Log.i(TAG, "requestLocationUpdates success")
-                promise.resolve(null);
-            }?.addOnFailureListener {
-                Log.e(TAG, "requestLocationUpdates failure $it")
-                promise.reject(it)
-            }
-        } else {
-            promise.reject(Exception("Location updates service not available"))
-        }
+    fun startGeofenceService(promise: Promise) {
+        geofenceServiceConnection.startService(promise)
     }
 
     @ReactMethod
-    fun removeLocationUpdates(promise: Promise) {
-        if (mService != null) {
-            mService?.removeLocationUpdates()?.addOnSuccessListener {
-                Log.i(TAG, "removeLocationUpdates success")
-                promise.resolve(null);
-            }?.addOnFailureListener {
-                Log.e(TAG, "removeLocationUpdates failure $it")
-                promise.reject(it)
-            }
-        } else {
-            promise.resolve(null)
-        }
+    fun stopGeofenceService(promise: Promise) {
+        geofenceServiceConnection.stopService(promise)
     }
 
     @ReactMethod
@@ -150,26 +75,81 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         }
     }
 
+    @ReactMethod
+    fun addGeofences(geofences: ReadableArray, promise: Promise) {
+        if (geofenceServiceConnection.mService != null) {
+            val list = ArrayList<Bundle>()
+            for (i in 0 until geofences.size()) {
+                val bundle = Bundle()
+                val map = geofences.getMap(i)
+                bundle.putString("id", map!!.getString("id"))
+                bundle.putDouble("latitude", map.getDouble("latitude"))
+                bundle.putDouble("longitude", map.getDouble("longitude"))
+                bundle.putFloat("radius", map.getDouble("radius").toFloat())
+                list.add(bundle)
+            }
+
+            currentActivity?.run {
+                val addGeofencesTask = (geofenceServiceConnection.mService as GeofenceUpdatesService).addGeofences(list)
+                if (addGeofencesTask != null) {
+                    addGeofencesTask.addOnSuccessListener(this, OnSuccessListener<Void?> {
+                        Log.i(TAG, "Geofences added")
+                        promise.resolve(null)
+                    })
+                    .addOnFailureListener(this, OnFailureListener { e ->
+                        Log.i(TAG, "Geofences add failure $e")
+                        promise.reject(e)
+                    })
+                } else {
+                    promise.resolve(null)
+                }
+            }
+        } else {
+            promise.resolve(null)
+        }
+    }
+
+    @ReactMethod
+    fun removeGeofences(geofences: ReadableArray, promise: Promise) {
+        if (geofenceServiceConnection.mService != null) {
+            val list = ArrayList<String>()
+            for (i in 0 until geofences.size()) {
+                val geofence = geofences.getString(i)
+                if (geofence != null) list.add(geofence)
+            }
+
+            currentActivity?.run {
+                (geofenceServiceConnection.mService as GeofenceUpdatesService).removeGeofences(list)
+                        ?.addOnSuccessListener(this, OnSuccessListener<Void?> {
+                            Log.i(TAG, "Geofences removed")
+                            promise.resolve(null)
+                        })
+                        ?.addOnFailureListener(this, OnFailureListener { e ->
+                            Log.i(TAG, "Geofences remove failure $e")
+                            promise.reject(e)
+                        })
+            }
+        } else {
+            promise.resolve(null)
+        }
+    }
+
     // region LifecycleEventListener
 
     override fun onHostResume() {
-        Log.i(TAG, "onHostResume")
-        if (intentService != null) { // TODO: can't check mBound, onServiceDisconnected never called
-            reactContext.bindService(intentService, connection, Context.BIND_AUTO_CREATE)
-            mBound = true // TODO: shouldn't be required
-        }
+        locationServiceConnection.onHostResume()
+        geofenceServiceConnection.onHostResume()
+        Notification.removeNotification()
     }
 
     override fun onHostPause() {
-        Log.i(TAG, "onHostPause")
-        if (mBound) {
-            reactContext.unbindService(connection)
-            mBound = false // TODO: shouldn't be required
-        }
+        locationServiceConnection.onHostPause()
+        geofenceServiceConnection.onHostPause()
     }
 
     override fun onHostDestroy() {
-        Log.i(TAG, "onHostDestroy")
+        locationServiceConnection.onHostDestroy()
+        geofenceServiceConnection.onHostDestroy()
     }
 
     // endregion
