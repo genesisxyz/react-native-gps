@@ -21,7 +21,7 @@ interface ServiceInterface {
 
 class ConnectService(private val reactContext: ReactApplicationContext, private val serviceClass: Class<*>) {
     companion object {
-        const val TAG = "ConnectService"
+        private const val TAG = "ConnectService"
     }
 
     private var mBound = false
@@ -96,7 +96,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
     }
 
     fun onHostPause() {
-        Log.i(GpsModule.TAG, "onHostPause")
+        Log.i(TAG, "onHostPause")
         if (mBound) {
             reactContext.unbindService(connection)
             mBound = false // TODO: shouldn't be required

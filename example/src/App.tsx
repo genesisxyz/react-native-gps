@@ -1,7 +1,7 @@
 import * as React from 'react';
 
-import { StyleSheet, View, Button } from 'react-native';
-import Gps, { Geofence } from 'react-native-gps';
+import { StyleSheet, View, Button, Text } from 'react-native';
+import Gps, { ActivityRecognitionType, Geofence } from 'react-native-gps';
 import MapView, {
   Circle,
   MapEvent,
@@ -16,6 +16,17 @@ import { gpsSlice } from './slices/gps';
 import { appSlice } from './slices/app';
 import { useState } from 'react';
 
+const activities = {
+  [ActivityRecognitionType.InVechicle]: 'Vehicle',
+  [ActivityRecognitionType.OnBicycle]: 'Bicycle',
+  [ActivityRecognitionType.OnFoot]: 'Foot',
+  [ActivityRecognitionType.Running]: 'Running',
+  [ActivityRecognitionType.Still]: 'Still',
+  [ActivityRecognitionType.Tilting]: 'Tilting',
+  [ActivityRecognitionType.Unknown]: 'Unknown',
+  [ActivityRecognitionType.Walking]: 'Walking',
+};
+
 export default function App() {
   const dispatch = useAppDispatch();
   const { lastLocation, locations } = useSelector(
@@ -28,6 +39,10 @@ export default function App() {
   );
 
   const [geofenceMarkers, setGeofenceMarkers] = useState<Geofence[]>([]);
+
+  const [currentActivity, setCurrentActivity] = useState(
+    activities[ActivityRecognitionType.Unknown]
+  );
 
   function toggleTracking() {
     dispatch(appSlice.actions.toggleTracking());
@@ -58,14 +73,18 @@ export default function App() {
     if (tracking) {
       Gps.startBackgroundLocation().then(() => {
         Gps.startBackgroundGeofence().then(() => {
-          dispatch(appSlice.actions.setBackgroundLocationStarted(true));
+          Gps.startBackgroundActivityRecognition().then(() => {
+            dispatch(appSlice.actions.setBackgroundLocationStarted(true));
+          });
         });
       });
     } else {
       Gps.stopBackgroundLocation().then(() => {
         Gps.stopBackgroundGeofence().then(() => {
-          setGeofenceMarkers([]);
-          dispatch(appSlice.actions.setBackgroundLocationStarted(false));
+          Gps.stopBackgroundActivityRecognition().then(() => {
+            setGeofenceMarkers([]);
+            dispatch(appSlice.actions.setBackgroundLocationStarted(false));
+          });
         });
       });
     }
@@ -83,11 +102,15 @@ export default function App() {
         });
         dispatch(gpsSlice.actions.addLocation(newLocation));
       });
+      Gps.watchActivity((activity) => {
+        setCurrentActivity(activities[activity.type]);
+      });
     }
   }, [tracking, backgroundLocationStarted, dispatch]);
 
   return (
     <View style={styles.container}>
+      <Text style={styles.activity}>{currentActivity}</Text>
       <Button
         disabled={
           (tracking && !backgroundLocationStarted) ||
@@ -133,5 +156,10 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  activity: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    padding: 16,
   },
 });

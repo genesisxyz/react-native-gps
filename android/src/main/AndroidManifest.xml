@@ -5,6 +5,8 @@
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+  <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <application>
@@ -14,6 +16,9 @@
     <service android:name=".GeofenceUpdatesService" android:foregroundServiceType="location" />
     <service android:name=".GeofenceIntentService" />
     <service android:name=".GeofenceEventService" />
+    <service android:name=".ActivityRecognitionUpdatesService" android:foregroundServiceType="location" />
+    <service android:name=".ActivityRecognitionIntentService" />
+    <service android:name=".ActivityRecognitionEventService" />
 
   </application>
 
