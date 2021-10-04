@@ -12,9 +12,14 @@ export type Location = {
   isFromMockProvider: boolean;
 };
 
+export enum GeofenceTransition {
+  Enter = 1,
+  Exit,
+}
+
 export type GeofenceResult = {
   ids: string[];
-  transition: number;
+  transition: GeofenceTransition;
 };
 
 export type Geofence = {
@@ -78,7 +83,7 @@ const Gps: GpsType = NativeModules.Gps;
 
 let locationFromTask = new Subject<Location | null>();
 
-let geofenceFromTask = new Subject<GeofenceResult[] | null>();
+let geofenceFromTask = new Subject<GeofenceResult | null>();
 
 let activityRecognitionFromTask = new Subject<ActivityRecognition | null>();
 
@@ -86,9 +91,8 @@ const LocationTask = async (location: Location) => {
   locationFromTask.next(location);
 };
 
-const GeofenceTask = async (geofences: GeofenceResult[]) => {
-  geofenceFromTask.next(geofences);
-  console.warn(geofences);
+const GeofenceTask = async (geofenceResult: GeofenceResult) => {
+  geofenceFromTask.next(geofenceResult);
 };
 
 const ActivityRecognitionTask = async (activity: ActivityRecognition) => {
@@ -140,6 +144,15 @@ export default {
   },
   watchLocation(callback: (location: Location) => void) {
     locationFromTask
+      .pipe(takeWhile((data) => data !== null))
+      .subscribe((data) => {
+        if (data) {
+          callback(data);
+        }
+      });
+  },
+  watchGeofences(callback: (geofenceResult: GeofenceResult) => void) {
+    geofenceFromTask
       .pipe(takeWhile((data) => data !== null))
       .subscribe((data) => {
         if (data) {

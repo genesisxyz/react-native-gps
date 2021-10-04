@@ -1,7 +1,12 @@
 import * as React from 'react';
+import { useState } from 'react';
 
-import { StyleSheet, View, Button, Text } from 'react-native';
-import Gps, { ActivityRecognitionType, Geofence } from 'react-native-gps';
+import { Button, StyleSheet, Text, View } from 'react-native';
+import Gps, {
+  ActivityRecognitionType,
+  Geofence,
+  GeofenceTransition,
+} from 'react-native-gps';
 import MapView, {
   Circle,
   MapEvent,
@@ -10,11 +15,9 @@ import MapView, {
   PROVIDER_GOOGLE,
 } from 'react-native-maps';
 import { useSelector } from 'react-redux';
-import type { RootState } from './store';
-import { useAppDispatch } from './store';
+import { RootState, useAppDispatch } from './store';
 import { gpsSlice } from './slices/gps';
 import { appSlice } from './slices/app';
-import { useState } from 'react';
 
 const activities = {
   [ActivityRecognitionType.InVechicle]: 'Vehicle',
@@ -27,6 +30,8 @@ const activities = {
   [ActivityRecognitionType.Walking]: 'Walking',
 };
 
+type GeofenceColored = Geofence & { color: string };
+
 export default function App() {
   const dispatch = useAppDispatch();
   const { lastLocation, locations } = useSelector(
@@ -38,7 +43,7 @@ export default function App() {
     (state: RootState) => state.app
   );
 
-  const [geofenceMarkers, setGeofenceMarkers] = useState<Geofence[]>([]);
+  const [geofenceMarkers, setGeofenceMarkers] = useState<GeofenceColored[]>([]);
 
   const [currentActivity, setCurrentActivity] = useState(
     activities[ActivityRecognitionType.Unknown]
@@ -59,10 +64,11 @@ export default function App() {
   function addGeofence(event: MapEvent) {
     if (tracking && backgroundLocationStarted) {
       const { coordinate } = event.nativeEvent;
-      const geofenceMarker: Geofence = {
+      const geofenceMarker: GeofenceColored = {
         ...coordinate,
         id: `${latitude}${longitude}`,
         radius: 300,
+        color: '#ff000016',
       };
       setGeofenceMarkers((state) => [...state, geofenceMarker]);
       Gps.addGeofences([geofenceMarker]);
@@ -101,6 +107,22 @@ export default function App() {
           },
         });
         dispatch(gpsSlice.actions.addLocation(newLocation));
+      });
+      Gps.watchGeofences((geofenceResult) => {
+        geofenceResult.ids.forEach((id) => {
+          setGeofenceMarkers((state) =>
+            state.map((geofenceMarker) => {
+              return {
+                ...geofenceMarker,
+                color:
+                  id === geofenceMarker.id &&
+                  geofenceResult.transition === GeofenceTransition.Enter
+                    ? '#00ff0016'
+                    : '#ff000016',
+              };
+            })
+          );
+        });
       });
       Gps.watchActivity((activity) => {
         setCurrentActivity(activities[activity.type]);
@@ -141,7 +163,7 @@ export default function App() {
               longitude: geofenceMaker.longitude,
             }}
             radius={geofenceMaker.radius}
-            fillColor="#ff000016"
+            fillColor={geofenceMaker.color}
             strokeColor="#f00"
           />
         ))}

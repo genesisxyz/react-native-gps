@@ -182,6 +182,8 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
                 }
                 myIntent.putExtra("ids", ids)
                 applicationContext.startService(myIntent)
+
+                HeadlessJsTaskService.acquireWakeLockNow(applicationContext)
             }
 
             if (geofencesOutside.size > 0) {
@@ -193,9 +195,9 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
                 }
                 myIntent.putExtra("ids", ids)
                 applicationContext.startService(myIntent)
-            }
 
-            HeadlessJsTaskService.acquireWakeLockNow(applicationContext)
+                HeadlessJsTaskService.acquireWakeLockNow(applicationContext)
+            }
         }
     }
 
