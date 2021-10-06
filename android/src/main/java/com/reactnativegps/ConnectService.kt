@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
@@ -19,7 +20,7 @@ interface ServiceInterface {
     fun updateOptions(options: HashMap<String, Any>?)
 }
 
-class ConnectService(private val reactContext: ReactApplicationContext, private val serviceClass: Class<*>) {
+class ConnectService(private val reactContext: ReactApplicationContext, private val serviceClass: Class<*>): LifecycleEventListener {
     companion object {
         private const val TAG = "ConnectService"
     }
@@ -31,7 +32,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
 
     private var mStartPromise: Promise? = null
 
-    private var intentService: Intent? = null
+    var intentService: Intent? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName,
@@ -42,7 +43,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
             val binder: ServiceBinderInterface = service as ServiceBinderInterface
             mService = binder.service
             mBound = true
-            mStartPromise?.resolve(null)
+            mStartPromise?.resolve(true)
             mStartPromise = null
         }
 
@@ -62,14 +63,10 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
             intentService = Intent(reactContext, serviceClass)
             mStartPromise = promise
             reactContext.bindService(intentService, connection, Context.BIND_AUTO_CREATE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                reactContext.startService(intentService)
-            } else {
-                reactContext.startService(intentService)
-            }
+            reactContext.startService(intentService)
         } else {
             Log.w(TAG, "Intent service is running")
-            promise.resolve(null)
+            promise.resolve(true)
         }
     }
 
@@ -87,7 +84,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
         promise.resolve(null)
     }
 
-    fun onHostResume() {
+    override fun onHostResume() {
         Log.i(TAG, "onHostResume")
         if (intentService != null) { // TODO: can't check mBound, onServiceDisconnected never called
             reactContext.bindService(intentService, connection, Context.BIND_AUTO_CREATE)
@@ -95,7 +92,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
         }
     }
 
-    fun onHostPause() {
+    override fun onHostPause() {
         Log.i(TAG, "onHostPause")
         if (mBound) {
             reactContext.unbindService(connection)
@@ -103,7 +100,7 @@ class ConnectService(private val reactContext: ReactApplicationContext, private 
         }
     }
 
-    fun onHostDestroy() {
+    override fun onHostDestroy() {
         Log.i(TAG, "onHostDestroy")
     }
 }

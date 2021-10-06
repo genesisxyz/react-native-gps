@@ -6,10 +6,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat.getSystemService
 import java.lang.ref.WeakReference
-import kotlin.coroutines.coroutineContext
 
 object Notification {
     private const val TAG = "Notification"
@@ -19,7 +16,8 @@ object Notification {
     private const val NOTIFICATION_CONTENT_TEXT = "Tracking enabled"
     private const val NOTIFICATION_SMALL_ICON = "ic_launcher"
 
-    private var notificationBuilder: WeakReference<NotificationCompat.Builder>? = null
+    var notificationBuilder: WeakReference<NotificationCompat.Builder>? = null
+        private set
 
     private var notification: Notification? = null
 
@@ -109,20 +107,6 @@ object Notification {
 
         if (newNotificationSmallIcon != null) {
             notificationSmallIcon = newNotificationSmallIcon
-        }
-
-        notificationBuilder?.get()?.run {
-            val smallIconId = context.resources.getIdentifier(notificationSmallIcon, "mipmap", context.packageName);
-
-            setContentTitle(notificationContentTitle)
-            setContentText(notificationContentText)
-            setSmallIcon(smallIconId)
-
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
-            notificationManager.notify(
-                    notificationId,
-                    build()
-            );
         }
     }
 }

@@ -77,58 +77,70 @@ export default function App() {
 
   React.useEffect(() => {
     if (tracking) {
-      Gps.startBackgroundLocation().then(() => {
-        Gps.startBackgroundGeofence().then(() => {
-          Gps.startBackgroundActivityRecognition().then(() => {
-            dispatch(appSlice.actions.setBackgroundLocationStarted(true));
-          });
-        });
+      new Promise(async (resolve) => {
+        const granted =
+          (await Gps.requestLocationPermissions()) &&
+          (await Gps.requestActivityPermissions());
+        if (granted) {
+          const started = await Gps.startGpsService();
+          return resolve(started);
+        }
+      }).then(async (started) => {
+        if (started) {
+          dispatch(appSlice.actions.setBackgroundLocationStarted(true));
+        }
       });
     } else {
-      Gps.stopBackgroundLocation().then(() => {
-        Gps.stopBackgroundGeofence().then(() => {
-          Gps.stopBackgroundActivityRecognition().then(() => {
-            setGeofenceMarkers([]);
-            dispatch(appSlice.actions.setBackgroundLocationStarted(false));
-          });
-        });
+      Gps.stopGpsService().then(() => {
+        setGeofenceMarkers([]);
+        dispatch(appSlice.actions.setBackgroundLocationStarted(false));
       });
     }
   }, [tracking, dispatch]);
 
   React.useEffect(() => {
     if (tracking && backgroundLocationStarted) {
-      Gps.watchLocation((newLocation) => {
-        Gps.setOptions({
-          android: {
-            notification: {
-              contentText: `${newLocation.latitude};${newLocation.longitude}`,
-            },
-          },
-        });
-        dispatch(gpsSlice.actions.addLocation(newLocation));
-      });
-      Gps.watchGeofences((geofenceResult) => {
-        geofenceResult.ids.forEach((id) => {
-          setGeofenceMarkers((state) =>
-            state.map((geofenceMarker) => {
-              return {
-                ...geofenceMarker,
-                color:
-                  id === geofenceMarker.id &&
-                  geofenceResult.transition === GeofenceTransition.Enter
-                    ? '#00ff0016'
-                    : '#ff000016',
-              };
-            })
-          );
-        });
-      });
-      Gps.watchActivity((activity) => {
-        setCurrentActivity(activities[activity.type]);
-      });
+      Gps.startLocationUpdates();
+      Gps.startGeofenceUpdates();
+      Gps.startActivityRecognitionUpdates();
+    } else {
+      Gps.stopLocationUpdates();
+      Gps.stopGeofenceUpdates();
+      Gps.stopActivityRecognitionUpdates();
     }
-  }, [tracking, backgroundLocationStarted, dispatch]);
+  }, [tracking, backgroundLocationStarted]);
+
+  React.useEffect(() => {
+    Gps.watchLocation((newLocation) => {
+      Gps.setOptions({
+        android: {
+          notification: {
+            contentText: `${newLocation.latitude};${newLocation.longitude}`,
+          },
+        },
+      });
+      dispatch(gpsSlice.actions.addLocation(newLocation));
+    });
+    Gps.watchGeofences((geofenceResult) => {
+      geofenceResult.ids.forEach((id) => {
+        setGeofenceMarkers((state) =>
+          state.map((geofenceMarker) => {
+            return {
+              ...geofenceMarker,
+              color:
+                id === geofenceMarker.id &&
+                geofenceResult.transition === GeofenceTransition.Enter
+                  ? '#00ff0016'
+                  : '#ff000016',
+            };
+          })
+        );
+      });
+    });
+    Gps.watchActivity((activity) => {
+      setCurrentActivity(activities[activity.type]);
+    });
+  }, [dispatch]);
 
   return (
     <View style={styles.container}>

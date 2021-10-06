@@ -11,12 +11,10 @@
 
   <application>
 
-    <service android:name=".LocationUpdatesService" android:foregroundServiceType="location" />
+    <service android:name=".GpsService" android:foregroundServiceType="location" />
     <service android:name=".LocationEventService" />
-    <service android:name=".GeofenceUpdatesService" android:foregroundServiceType="location" />
     <service android:name=".GeofenceIntentService" />
     <service android:name=".GeofenceEventService" />
-    <service android:name=".ActivityRecognitionUpdatesService" android:foregroundServiceType="location" />
     <service android:name=".ActivityRecognitionIntentService" />
     <service android:name=".ActivityRecognitionEventService" />
 

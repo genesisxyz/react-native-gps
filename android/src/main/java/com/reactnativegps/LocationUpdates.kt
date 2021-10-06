@@ -1,112 +1,52 @@
 package com.reactnativegps
 
-import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.location.Location
-import android.os.*
+import android.os.Build
+import android.os.Looper
 import android.util.Log
 import com.facebook.react.HeadlessJsTaskService
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
 
-class LocationUpdatesService : Service(), ServiceInterface {
+class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceInterface {
     companion object {
-        private const val TAG = "LocationUpdatesService"
+        private const val TAG = "LocationUpdates"
 
-        /**
-         * The desired interval for location updates. Inexact. Updates may be more or less frequent.
-         */
         private const val UPDATE_INTERVAL_IN_MILLISECONDS: Long = 3000
-
-        /**
-         * The fastest rate for active location updates. Updates will never be more frequent
-         * than this value.
-         */
         private const val FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS = UPDATE_INTERVAL_IN_MILLISECONDS / 2
     }
 
-    /**
-     * Provides access to the Fused Location Provider API.
-     */
-    private var mFusedLocationClient: FusedLocationProviderClient? = null
+    private lateinit var mFusedLocationClient: FusedLocationProviderClient
 
-    /**
-     * Callback for changes in location.
-     */
     private lateinit var mLocationCallback: LocationCallback
 
-    /**
-     * The current location.
-     */
     private var mLocation: Location? = null
-    private var mServiceHandler: Handler? = null
     private var mLocationUpdatesTask: Task<*>? = null
 
-    private val binder: IBinder = UpdatesBinder()
+    private var started = false
 
-    private var isBound = false
-
-    inner class UpdatesBinder() : Binder(), ServiceBinderInterface {
-        // Return this instance of LocalService so clients can call public methods
-        override val service: LocationUpdatesService
-            get() =// Return this instance of LocalService so clients can call public methods
-                this@LocationUpdatesService
-    }
-
-    //region binding
-
-    override fun onBind(intent: Intent): IBinder {
-        Log.i(TAG, "onBind")
-
-        isBound = true
-
-        stopForeground(true)
-
-        return binder
-    }
-
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        super.onUnbind(intent)
-
-        Log.i(TAG, "onUnbind")
-
-        isBound = false
-
-        startForeground()
-
-        return true
-    }
-
-
-    override fun onRebind(intent: Intent?) {
-        super.onRebind(intent)
-
-        Log.i(TAG, "onRebind")
-
-        isBound = true
-
-        stopForeground(true)
-    }
-
-    //endregion
+    // region ServiceLifecycle
 
     override fun onCreate() {
-        super.onCreate()
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         mLocationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 super.onLocationResult(locationResult)
                 onNewLocation(locationResult.lastLocation)
             }
         }
-
-        requestLocationUpdates()
-
-        val handlerThread = HandlerThread(TAG)
-        handlerThread.start()
-        mServiceHandler = Handler(handlerThread.looper)
     }
+
+    override fun onDestroy() {
+        if (started) {
+            removeLocationUpdates()
+        }
+        started = false
+    }
+
+    // endregion
 
     private fun requestLocationUpdates(): Task<*>? {
         Log.i(TAG, "Request location updates")
@@ -124,7 +64,7 @@ class LocationUpdatesService : Service(), ServiceInterface {
     private fun removeLocationUpdates(): Task<Void>? {
         Log.i(TAG, "Removing location updates")
         return try {
-            val task = mFusedLocationClient?.removeLocationUpdates(mLocationCallback)
+            val task = mFusedLocationClient.removeLocationUpdates(mLocationCallback)
             mLocationUpdatesTask = null
             task
         } catch (unlikely: SecurityException) {
@@ -137,7 +77,7 @@ class LocationUpdatesService : Service(), ServiceInterface {
     private val lastLocation: Unit
         get() {
             try {
-                mFusedLocationClient?.lastLocation?.addOnCompleteListener { task ->
+                mFusedLocationClient.lastLocation?.addOnCompleteListener { task ->
                     if (task.isSuccessful && task.result != null) {
                         mLocation = task.result
                     } else {
@@ -161,7 +101,6 @@ class LocationUpdatesService : Service(), ServiceInterface {
             if (!location.hasAltitude()) {
                 location.altitude = 0.0
             }
-            val context = applicationContext
 
             val myIntent = Intent(context, LocationEventService::class.java)
             myIntent.putExtra("latitude", location.latitude)
@@ -193,27 +132,19 @@ class LocationUpdatesService : Service(), ServiceInterface {
         }
     }
 
-    override fun onDestroy() {
-        removeLocationUpdates()
-        mServiceHandler?.removeCallbacksAndMessages(null)
-        super.onDestroy()
+    fun start() {
+        started && return
+
+        requestLocationUpdates()
+
+        started = true
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return if (intent != null) {
-            START_STICKY
-        } else {
-            START_NOT_STICKY
-        }
-    }
-
-    private fun startForeground() {
-        Notification.createNotificationChannel(applicationContext)
-        val notification = Notification.getNotification(applicationContext)
-        startForeground(Notification.notificationId, notification)
-    }
+    // region ServiceInterface
 
     override fun updateOptions(options: HashMap<String, Any>?) {
 
     }
+
+    // endregion
 }

@@ -1,5 +1,6 @@
 import { AppRegistry, NativeModules } from 'react-native';
 import { Subject, takeWhile } from 'rxjs';
+import type { Subscription } from 'rxjs';
 
 export type Location = {
   latitude: number;
@@ -67,25 +68,27 @@ export type Options = DeepPartial<{
 
 type GpsType = {
   setOptions(options: Options): void;
-  startLocationService(): Promise<void>;
-  stopLocationService(): Promise<void>;
-  startGeofenceService(): Promise<void>;
-  stopGeofenceService(): Promise<void>;
-  startActivityRecognitionService(): Promise<void>;
-  stopActivityRecognitionService(): Promise<void>;
-  requestLocationPermissions(): Promise<void>;
-  requestActivityPermissions(): Promise<void>;
-  addGeofences(geofences: Geofence[]): Promise<void>;
-  removeGeofences(geofencesIds: string[]): Promise<void>;
+  startGpsService(): Promise<boolean>;
+  stopGpsService(): Promise<void>;
+  startLocationUpdates(): void;
+  startGeofenceUpdates(): void;
+  startActivityRecognitionUpdates(): void;
+  stopLocationUpdates(): void;
+  stopGeofenceUpdates(): void;
+  stopActivityRecognitionUpdates(): void;
+  requestLocationPermissions(): Promise<boolean>;
+  requestActivityPermissions(): Promise<boolean>;
+  addGeofences(geofences: Geofence[]): Promise<boolean>;
+  removeGeofences(geofencesIds: string[]): Promise<boolean>;
 };
 
 const Gps: GpsType = NativeModules.Gps;
 
-let locationFromTask = new Subject<Location | null>();
+let locationFromTask = new Subject<Location | true>();
 
-let geofenceFromTask = new Subject<GeofenceResult | null>();
+let geofenceFromTask = new Subject<GeofenceResult | true>();
 
-let activityRecognitionFromTask = new Subject<ActivityRecognition | null>();
+let activityRecognitionFromTask = new Subject<ActivityRecognition | true>();
 
 const LocationTask = async (location: Location) => {
   locationFromTask.next(location);
@@ -110,61 +113,52 @@ AppRegistry.registerHeadlessTask(
 
 export default {
   setOptions: Gps.setOptions,
-  async startBackgroundLocation() {
-    await Gps.requestLocationPermissions();
-    await Gps.startLocationService();
+  requestLocationPermissions: Gps.requestLocationPermissions,
+  requestActivityPermissions: Gps.requestActivityPermissions,
+  startLocationUpdates: Gps.startLocationUpdates,
+  startGeofenceUpdates: Gps.startGeofenceUpdates,
+  startActivityRecognitionUpdates: Gps.startActivityRecognitionUpdates,
+  stopLocationUpdates: Gps.stopLocationUpdates,
+  stopGeofenceUpdates: Gps.stopGeofenceUpdates,
+  stopActivityRecognitionUpdates: Gps.stopActivityRecognitionUpdates,
+  addGeofences: Gps.addGeofences,
+  removeGeofences: Gps.removeGeofences,
+  async startGpsService() {
+    return await Gps.startGpsService();
   },
-  async stopBackgroundLocation() {
-    await Gps.stopLocationService();
-    await Gps.stopGeofenceService();
-    locationFromTask.next(null); // unsubscribe
+  async stopGpsService() {
+    await Gps.stopGpsService();
+    locationFromTask.next(true); // unsubscribe
+    geofenceFromTask.next(true); // unsubscribe
+    activityRecognitionFromTask.next(true); // unsubscribe
   },
-  async startBackgroundGeofence() {
-    await Gps.requestLocationPermissions();
-    await Gps.startGeofenceService();
-  },
-  async stopBackgroundGeofence() {
-    await Gps.stopGeofenceService();
-    geofenceFromTask.next(null); // unsubscribe
-  },
-  async startBackgroundActivityRecognition() {
-    await Gps.requestLocationPermissions();
-    await Gps.requestActivityPermissions();
-    await Gps.startActivityRecognitionService();
-  },
-  async stopBackgroundActivityRecognition() {
-    await Gps.stopActivityRecognitionService();
-    activityRecognitionFromTask.next(null); // unsubscribe
-  },
-  async addGeofences(geofences: Geofence[]) {
-    await Gps.addGeofences(geofences);
-  },
-  async removeGeofences(geofencesIds: string[]) {
-    await Gps.removeGeofences(geofencesIds);
-  },
-  watchLocation(callback: (location: Location) => void) {
-    locationFromTask
-      .pipe(takeWhile((data) => data !== null))
+  watchLocation(callback: (location: Location) => void): Subscription {
+    return locationFromTask
+      .pipe(takeWhile((data) => data !== true))
       .subscribe((data) => {
-        if (data) {
+        if (data !== true) {
           callback(data);
         }
       });
   },
-  watchGeofences(callback: (geofenceResult: GeofenceResult) => void) {
-    geofenceFromTask
-      .pipe(takeWhile((data) => data !== null))
+  watchGeofences(
+    callback: (geofenceResult: GeofenceResult) => void
+  ): Subscription {
+    return geofenceFromTask
+      .pipe(takeWhile((data) => data !== true))
       .subscribe((data) => {
-        if (data) {
+        if (data !== true) {
           callback(data);
         }
       });
   },
-  watchActivity(callback: (activity: ActivityRecognition) => void) {
-    activityRecognitionFromTask
-      .pipe(takeWhile((data) => data !== null))
+  watchActivity(
+    callback: (activity: ActivityRecognition) => void
+  ): Subscription {
+    return activityRecognitionFromTask
+      .pipe(takeWhile((data) => data !== true))
       .subscribe((data) => {
-        if (data) {
+        if (data !== true) {
           callback(data);
         }
       });

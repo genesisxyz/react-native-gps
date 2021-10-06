@@ -1,7 +1,8 @@
 package com.reactnativegps
 
 import android.Manifest
-import android.app.*
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -12,113 +13,59 @@ import com.facebook.react.HeadlessJsTaskService
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
 
-
 data class GeofenceTransition(
-        val id: String,
-        var transition: Int? = null,
-        val latitude: Double,
-        val longitude: Double,
-        val radius: Float
+    val id: String,
+    var transition: Int? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val radius: Float
 )
 
-class GeofenceUpdatesService : Service(), ServiceInterface {
+
+class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceInterface {
     companion object {
-        private const val TAG = "GeofenceUpdatesService"
+        private const val TAG = "GeofenceUpdates"
 
         private const val UPDATE_INTERVAL_IN_MILLISECONDS: Long = 3000
         private const val FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS = UPDATE_INTERVAL_IN_MILLISECONDS / 2
     }
 
-    private var mGeofencingClient: GeofencingClient? = null
+    private lateinit var mGeofencingClient: GeofencingClient
     private var mGeofenceUpdatesTask: Task<Void>? = null
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private lateinit var mLocationCallback: LocationCallback
     private var mLocationUpdatesTask: Task<*>? = null
 
-    private var geofences = mutableListOf<GeofenceTransition>();
+    private var geofences = mutableListOf<GeofenceTransition>()
 
-    private var mServiceHandler: Handler? = null
+    private var started = false
 
-    private val binder: IBinder = UpdatesBinder()
+    // region ServiceLifecycle
 
-    private var isBound = false
+    override fun onCreate() {
+
+    }
+
+    override fun onDestroy() {
+        if (started) {
+            if (!canAccessBackgroundLocation) {
+                removeLocationUpdates()
+            }
+        }
+        started = false
+    }
+
+    // endregion
 
     private val canAccessBackgroundLocation: Boolean
         get() {
-            val packageInfo = packageManager.getPackageInfo(applicationContext.packageName, PackageManager.GET_PERMISSIONS)
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
             val permissions = packageInfo.requestedPermissions
             return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
                     (permissions?.any { perm -> perm == Manifest.permission.ACCESS_BACKGROUND_LOCATION }
                             ?: false)
         }
-
-    inner class UpdatesBinder() : Binder(), ServiceBinderInterface {
-        // Return this instance of LocalService so clients can call public methods
-        override val service: GeofenceUpdatesService
-            get() =// Return this instance of LocalService so clients can call public methods
-                this@GeofenceUpdatesService
-    }
-
-    //region binding
-
-    override fun onBind(intent: Intent): IBinder {
-        Log.i(TAG, "onBind")
-
-        isBound = true
-
-        stopForeground(true)
-
-        return binder
-    }
-
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        super.onUnbind(intent)
-
-        Log.i(TAG, "onUnbind")
-
-        isBound = false
-
-        startForeground()
-
-        return true
-    }
-
-
-    override fun onRebind(intent: Intent?) {
-        super.onRebind(intent)
-
-        Log.i(TAG, "onRebind")
-
-        isBound = true
-
-        stopForeground(true)
-    }
-
-    //endregion
-
-    override fun onCreate() {
-        super.onCreate()
-
-        if (canAccessBackgroundLocation) {
-            mGeofencingClient = LocationServices.getGeofencingClient(applicationContext)
-        } else {
-            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-            mLocationCallback = object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    super.onLocationResult(locationResult)
-                    onNewLocation(locationResult.lastLocation)
-                }
-            }
-
-            requestLocationUpdates()
-        }
-
-        val handlerThread = HandlerThread(TAG)
-        handlerThread.start()
-        mServiceHandler = Handler(handlerThread.looper)
-    }
 
     private fun requestLocationUpdates(): Task<*>? {
         Log.i(TAG, "Request location updates")
@@ -127,7 +74,6 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
             mLocationUpdatesTask = mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.getMainLooper())
             mLocationUpdatesTask
         } catch (unlikely: SecurityException) {
-            // Utils.setRequestingLocationUpdates(this, false);
             Log.e(TAG, "Lost location permission. Could not request updates. $unlikely")
             null
         }
@@ -174,29 +120,29 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
             }
 
             if (geofencesInside.size > 0) {
-                val myIntent = Intent(applicationContext, GeofenceEventService::class.java)
+                val myIntent = Intent(context, GeofenceEventService::class.java)
                 myIntent.putExtra("transition", Geofence.GEOFENCE_TRANSITION_ENTER)
                 val ids = ArrayList<String>()
                 for (geofence in geofencesInside) {
                     ids.add(geofence.id)
                 }
                 myIntent.putExtra("ids", ids)
-                applicationContext.startService(myIntent)
+                context.startService(myIntent)
 
-                HeadlessJsTaskService.acquireWakeLockNow(applicationContext)
+                HeadlessJsTaskService.acquireWakeLockNow(context)
             }
 
             if (geofencesOutside.size > 0) {
-                val myIntent = Intent(applicationContext, GeofenceEventService::class.java)
+                val myIntent = Intent(context, GeofenceEventService::class.java)
                 myIntent.putExtra("transition", Geofence.GEOFENCE_TRANSITION_EXIT)
                 val ids = ArrayList<String>()
                 for (geofence in geofencesOutside) {
                     ids.add(geofence.id)
                 }
                 myIntent.putExtra("ids", ids)
-                applicationContext.startService(myIntent)
+                context.startService(myIntent)
 
-                HeadlessJsTaskService.acquireWakeLockNow(applicationContext)
+                HeadlessJsTaskService.acquireWakeLockNow(context)
             }
         }
     }
@@ -210,20 +156,22 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
         }
     }
 
-    override fun onDestroy() {
-        if (!canAccessBackgroundLocation) {
-            removeLocationUpdates()
-        }
-        mServiceHandler?.removeCallbacksAndMessages(null)
-        super.onDestroy()
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return if (intent != null) {
-            START_STICKY
+    fun start() {
+        started && return
+        if (canAccessBackgroundLocation) {
+            mGeofencingClient = LocationServices.getGeofencingClient(context)
         } else {
-            START_NOT_STICKY
+            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+            mLocationCallback = object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    super.onLocationResult(locationResult)
+                    onNewLocation(locationResult.lastLocation)
+                }
+            }
+
+            requestLocationUpdates()
         }
+        started = true
     }
 
     fun addGeofences(geofences: List<Bundle>): Task<Void>? {
@@ -260,9 +208,9 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
                 .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_DWELL)
                 .addGeofences(geofenceList)
                 .build()
-        val intent = Intent(applicationContext, GeofenceIntentService::class.java)
-        val pendingIntent = PendingIntent.getService(applicationContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-        if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        val intent = Intent(context, GeofenceIntentService::class.java)
+        val pendingIntent = PendingIntent.getService(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mGeofenceUpdatesTask = mGeofencingClient?.addGeofences(builder, pendingIntent)
             return mGeofenceUpdatesTask
         }
@@ -277,13 +225,11 @@ class GeofenceUpdatesService : Service(), ServiceInterface {
         return mGeofencingClient?.removeGeofences(geofences)
     }
 
-    private fun startForeground() {
-        Notification.createNotificationChannel(applicationContext)
-        val notification = Notification.getNotification(applicationContext)
-        startForeground(Notification.notificationId, notification)
-    }
+    // region ServiceInterface
 
     override fun updateOptions(options: HashMap<String, Any>?) {
 
     }
+
+    // endregion
 }
