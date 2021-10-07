@@ -1,14 +1,58 @@
 package com.reactnativegps
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.Looper
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import com.facebook.react.HeadlessJsTaskService
+import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.WritableNativeMap
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
+
+fun Location.toMap(): WritableMap {
+    val map = WritableNativeMap()
+
+    if (hasAccuracy()) {
+        map.putDouble("accuracy", accuracy.toDouble())
+    } else {
+        map.putDouble("accuracy", 0.0)
+    }
+
+    if (hasSpeed()) {
+        map.putDouble("speed", speed.toDouble())
+    } else {
+        map.putDouble("speed", 0.0)
+    }
+
+    if (hasBearing()) {
+        map.putDouble("bearing", bearing.toDouble())
+    } else {
+        map.putDouble("bearing", 0.0)
+    }
+
+    if (hasAltitude()) {
+        map.putDouble("altitude", altitude)
+    } else {
+        map.putDouble("altitude", 0.0)
+    }
+
+    map.putDouble("latitude", latitude)
+    map.putDouble("longitude", longitude)
+    map.putDouble("bearing", bearing.toDouble())
+    map.putInt("time", time.toInt()) // TODO: probably not a good idea
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        map.putBoolean("isFromMockProvider", isFromMockProvider)
+    }
+
+    return map
+}
 
 class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceInterface {
     companion object {
@@ -73,20 +117,12 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
         }
     }
 
-    // TODO: make a function
-    private val lastLocation: Unit
+    val lastLocation: Task<Location>?
         get() {
-            try {
-                mFusedLocationClient.lastLocation?.addOnCompleteListener { task ->
-                    if (task.isSuccessful && task.result != null) {
-                        mLocation = task.result
-                    } else {
-                        Log.w(TAG, "Failed to get location.")
-                    }
-                }
-            } catch (unlikely: SecurityException) {
-                Log.e(TAG, "Lost location permission.$unlikely")
+            return if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                null
             }
+            else mFusedLocationClient.lastLocation
         }
 
     private fun onNewLocation(location: Location) {

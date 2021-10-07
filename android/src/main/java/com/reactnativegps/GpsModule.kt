@@ -121,6 +121,25 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     }
 
     @ReactMethod
+    fun lastLocation(promise: Promise) {
+        gpsServiceConnection.mService?.run {
+            this as GpsService
+            if (locationUpdates?.lastLocation != null) {
+                locationUpdates?.lastLocation?.addOnCompleteListener { task ->
+                    Log.i(TAG, task.toString())
+                    if (task.isSuccessful && task.result != null) {
+                        promise.resolve(task.result.toMap())
+                    } else {
+                        promise.resolve(null)
+                    }
+                }
+            } else {
+                promise.resolve(null)
+            }
+        }
+    }
+
+    @ReactMethod
     fun requestLocationPermissions(promise: Promise) {
         currentActivity?.run {
             if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||

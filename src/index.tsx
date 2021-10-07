@@ -78,6 +78,7 @@ type GpsType = {
   stopActivityRecognitionUpdates(): void;
   requestLocationPermissions(): Promise<boolean>;
   requestActivityPermissions(): Promise<boolean>;
+  lastLocation(): Promise<Location | null>;
   addGeofences(geofences: Geofence[]): Promise<boolean>;
   removeGeofences(geofencesIds: string[]): Promise<boolean>;
 };
@@ -123,6 +124,7 @@ export default {
   stopActivityRecognitionUpdates: Gps.stopActivityRecognitionUpdates,
   addGeofences: Gps.addGeofences,
   removeGeofences: Gps.removeGeofences,
+  lastLocation: Gps.lastLocation,
   async startGpsService() {
     return await Gps.startGpsService();
   },
