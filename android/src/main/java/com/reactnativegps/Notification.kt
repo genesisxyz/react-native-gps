@@ -36,16 +36,27 @@ object Notification {
     var notificationSmallIcon = NOTIFICATION_SMALL_ICON
         private set
 
+    fun getSmallIconId(context: Context): Int {
+        var id = context.resources.getIdentifier(notificationSmallIcon, "drawable", context.packageName)
+        if (id == 0) {
+            id = context.resources.getIdentifier(notificationSmallIcon, "mipmap", context.packageName)
+        }
+        return id
+    }
+
     fun getNotification(context: Context): Notification? {
         if (notification == null) {
-            val smallIconId = context.resources.getIdentifier(notificationSmallIcon, "mipmap", context.packageName);
             notificationBuilder = WeakReference(NotificationCompat.Builder(context, notificationChannelId)
                 .setContentTitle(notificationContentTitle)
                 .setContentText(notificationContentText)
-                .setSmallIcon(smallIconId)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
             )
+
+            val smallIconId = getSmallIconId(context)
+            if (smallIconId != 0) {
+                notificationBuilder!!.get()!!.setSmallIcon(smallIconId);
+            }
 
             notification = notificationBuilder!!.get()!!.build()
         }

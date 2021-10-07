@@ -45,11 +45,13 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         Notification.updateNotification(reactContext.applicationContext, options.toHashMap())
         if (!isAppForeground) {
             Notification.notificationBuilder?.get()?.run {
-                val smallIconId = reactContext.applicationContext.resources.getIdentifier(Notification.notificationSmallIcon, "mipmap", reactContext.applicationContext.packageName);
-
                 setContentTitle(Notification.notificationContentTitle)
                 setContentText(Notification.notificationContentText)
-                setSmallIcon(smallIconId)
+
+                val smallIconId = Notification.getSmallIconId(reactContext.applicationContext)
+                if (smallIconId != 0) {
+                    setSmallIcon(smallIconId);
+                }
 
                 val notificationManager = reactContext.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
                 notificationManager.notify(

@@ -5,6 +5,15 @@ import { name as appName } from './app.json';
 import { Provider } from 'react-redux';
 import { persistor, store } from './src/store';
 import { PersistGate } from 'redux-persist/integration/react';
+import Gps from 'react-native-gps';
+
+Gps.setOptions({
+  android: {
+    notification: {
+      smallIcon: 'ic_notification',
+    },
+  },
+});
 
 const Redux = () => {
   return (
