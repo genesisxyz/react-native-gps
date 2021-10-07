@@ -10,7 +10,7 @@ export type Location = {
   altitude: number;
   bearing: number;
   time: number;
-  isFromMockProvider: boolean;
+  isFromMockProvider?: boolean;
 };
 
 export enum GeofenceTransition {
