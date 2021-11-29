@@ -42,18 +42,18 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     fun setOptions(options: ReadableMap) {
         gpsServiceConnection.setOptions(options)
 
-        Notification.updateNotification(reactContext.applicationContext, options.toHashMap())
+        Notification.updateNotification(reactContext, options.toHashMap())
         if (!isAppForeground) {
             Notification.notificationBuilder?.get()?.run {
                 setContentTitle(Notification.notificationContentTitle)
                 setContentText(Notification.notificationContentText)
 
-                val smallIconId = Notification.getSmallIconId(reactContext.applicationContext)
+                val smallIconId = Notification.getSmallIconId(reactContext)
                 if (smallIconId != 0) {
                     setSmallIcon(smallIconId);
                 }
 
-                val notificationManager = reactContext.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
+                val notificationManager = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
                 notificationManager.notify(
                         Notification.notificationId,
                         build()
@@ -203,7 +203,7 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
                 })?.addOnFailureListener(this, OnFailureListener { e ->
                     Log.i(TAG, "Geofences add failure $e")
                     promise.resolve(false)
-                }) ?: promise.resolve(false)
+                }) ?: promise.resolve(true)
             }
         } else {
             promise.resolve(false)

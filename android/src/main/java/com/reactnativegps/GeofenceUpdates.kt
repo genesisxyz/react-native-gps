@@ -12,14 +12,25 @@ import androidx.core.app.ActivityCompat
 import com.facebook.react.HeadlessJsTaskService
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 data class GeofenceTransition(
-    val id: String,
-    var transition: Int? = null,
-    val latitude: Double,
-    val longitude: Double,
-    val radius: Float
-)
+        val id: String,
+        var transition: Int? = null,
+        val latitude: Double,
+        val longitude: Double,
+        val radius: Float
+) {
+    override fun equals(other: Any?): Boolean {
+        return (other as? GeofenceTransition)?.id == id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+}
 
 
 class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceInterface {
@@ -37,14 +48,22 @@ class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceIn
     private lateinit var mLocationCallback: LocationCallback
     private var mLocationUpdatesTask: Task<*>? = null
 
-    private var geofences = mutableListOf<GeofenceTransition>()
+    private var geofences = mutableSetOf<GeofenceTransition>()
+    private var newGeofencesInside = mutableSetOf<GeofenceTransition>();
+
+    private var timer: Timer = Timer()
+    private var timerTask: TimerTask? = null
 
     private var started = false
 
     // region ServiceLifecycle
 
     override fun onCreate() {
+        timerTask = object : TimerTask() {
+            override fun run() {
 
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -95,48 +114,61 @@ class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceIn
         Log.i(TAG, "New location: $location")
         if (location.hasAccuracy()) {
 
-            val oldGeofences = geofences.toList()
-            val geofencesInside = mutableListOf<GeofenceTransition>();
-            val geofencesOutside = mutableListOf<GeofenceTransition>();
+            val oldGeofences = ArrayList(geofences.map { it.copy() })
+            val newGeofencesOutside = mutableSetOf<GeofenceTransition>();
 
             geofences.forEachIndexed { i, it ->
                 val results = FloatArray(1)
-                Location.distanceBetween(it.latitude, it.longitude, location.latitude, location.longitude, results);
+                Location.distanceBetween(it.latitude, it.longitude, location.latitude, location.longitude, results)
                 val distance = results[0]
 
                 if (distance <= it.radius) {
-                    if (oldGeofences[i].transition != Geofence.GEOFENCE_TRANSITION_ENTER) {
-                        geofencesInside.add(it);
-                    }
-
                     it.transition = Geofence.GEOFENCE_TRANSITION_ENTER
-                } else {
-                    if (oldGeofences[i].transition != Geofence.GEOFENCE_TRANSITION_EXIT) {
-                        geofencesOutside.add(it);
+
+                    if (oldGeofences[i].transition != null && oldGeofences[i].transition != Geofence.GEOFENCE_TRANSITION_ENTER) {
+                        newGeofencesInside.add(it)
                     }
-
+                } else {
                     it.transition = Geofence.GEOFENCE_TRANSITION_EXIT
+
+                    if (oldGeofences[i].transition != null && oldGeofences[i].transition != Geofence.GEOFENCE_TRANSITION_EXIT) {
+                        newGeofencesOutside.add(it)
+                    }
                 }
             }
 
-            if (geofencesInside.size > 0) {
-                val myIntent = Intent(context, GeofenceEventService::class.java)
-                myIntent.putExtra("transition", Geofence.GEOFENCE_TRANSITION_ENTER)
-                val ids = ArrayList<String>()
-                for (geofence in geofencesInside) {
-                    ids.add(geofence.id)
-                }
-                myIntent.putExtra("ids", ids)
-                context.startService(myIntent)
+            newGeofencesInside.removeAll(newGeofencesOutside);
 
-                HeadlessJsTaskService.acquireWakeLockNow(context)
+            if (newGeofencesInside.size > 0) {
+
+                timerTask?.cancel()
+
+                timerTask = object : TimerTask() {
+                    override fun run() {
+                        if (newGeofencesInside.isEmpty()) return;
+                        val myIntent = Intent(context, GeofenceEventService::class.java)
+                        myIntent.putExtra("transition", Geofence.GEOFENCE_TRANSITION_ENTER)
+                        val ids = ArrayList<String>()
+                        for (geofence in newGeofencesInside) {
+                            ids.add(geofence.id)
+                        }
+                        myIntent.putExtra("ids", ids)
+                        context.startService(myIntent)
+
+                        HeadlessJsTaskService.acquireWakeLockNow(context)
+
+                        newGeofencesInside = mutableSetOf()
+                    }
+                }
+
+                timer.schedule(timerTask, 1000 * 60 * 5) // 5 minutes
             }
 
-            if (geofencesOutside.size > 0) {
+            if (newGeofencesOutside.size > 0) {
                 val myIntent = Intent(context, GeofenceEventService::class.java)
                 myIntent.putExtra("transition", Geofence.GEOFENCE_TRANSITION_EXIT)
                 val ids = ArrayList<String>()
-                for (geofence in geofencesOutside) {
+                for (geofence in newGeofencesOutside) {
                     ids.add(geofence.id)
                 }
                 myIntent.putExtra("ids", ids)
@@ -181,7 +213,6 @@ class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceIn
                     latitude = it.getDouble("latitude"),
                     longitude = it.getDouble("longitude"),
                     radius = it.getFloat("radius")
-
             )
         })
 
@@ -219,7 +250,10 @@ class GeofenceUpdates(private val context: Context): ServiceLifecycle, ServiceIn
 
     fun removeGeofences(geofences: List<String>): Task<Void>? {
         if (!canAccessBackgroundLocation) {
-            this.geofences = mutableListOf()
+            geofences.forEach { id ->
+                val geofence = this.geofences.find { it.id == id }
+                this.geofences.remove(geofence)
+            }
             return null
         }
         return mGeofencingClient?.removeGeofences(geofences)

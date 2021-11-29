@@ -1,5 +1,5 @@
 import { AppRegistry, NativeModules } from 'react-native';
-import { Subject, takeWhile } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import type { Subscription } from 'rxjs';
 
 export type Location = {
@@ -85,11 +85,12 @@ type GpsType = {
 
 const Gps: GpsType = NativeModules.Gps;
 
-let locationFromTask = new Subject<Location | true>();
+let locationFromTask = new BehaviorSubject<Location | null>(null);
 
-let geofenceFromTask = new Subject<GeofenceResult | true>();
+let geofenceFromTask = new BehaviorSubject<GeofenceResult | null>(null);
 
-let activityRecognitionFromTask = new Subject<ActivityRecognition | true>();
+let activityRecognitionFromTask =
+  new BehaviorSubject<ActivityRecognition | null>(null);
 
 const LocationTask = async (location: Location) => {
   locationFromTask.next(location);
@@ -130,39 +131,30 @@ export default {
   },
   async stopGpsService() {
     await Gps.stopGpsService();
-    locationFromTask.next(true); // unsubscribe
-    geofenceFromTask.next(true); // unsubscribe
-    activityRecognitionFromTask.next(true); // unsubscribe
   },
   watchLocation(callback: (location: Location) => void): Subscription {
-    return locationFromTask
-      .pipe(takeWhile((data) => data !== true))
-      .subscribe((data) => {
-        if (data !== true) {
-          callback(data);
-        }
-      });
+    return locationFromTask.subscribe((data) => {
+      if (data !== null) {
+        callback(data);
+      }
+    });
   },
   watchGeofences(
     callback: (geofenceResult: GeofenceResult) => void
   ): Subscription {
-    return geofenceFromTask
-      .pipe(takeWhile((data) => data !== true))
-      .subscribe((data) => {
-        if (data !== true) {
-          callback(data);
-        }
-      });
+    return geofenceFromTask.subscribe((data) => {
+      if (data !== null) {
+        callback(data);
+      }
+    });
   },
   watchActivity(
     callback: (activity: ActivityRecognition) => void
   ): Subscription {
-    return activityRecognitionFromTask
-      .pipe(takeWhile((data) => data !== true))
-      .subscribe((data) => {
-        if (data !== true) {
-          callback(data);
-        }
-      });
+    return activityRecognitionFromTask.subscribe((data) => {
+      if (data !== null) {
+        callback(data);
+      }
+    });
   },
 };
