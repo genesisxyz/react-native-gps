@@ -6,6 +6,10 @@ platform :ios, '10.0'
 target 'GpsExample' do
   config = use_native_modules!
 
+  # https://github.com/react-native-maps/react-native-maps/blob/master/docs/installation.md#enabling-google-maps
+  rn_maps_path = '../node_modules/react-native-maps'
+  pod 'react-native-google-maps', :path => rn_maps_path
+
   use_react_native!(:path => config["reactNativePath"])
 
   pod 'react-native-gps', :path => '../..'
@@ -14,7 +18,7 @@ target 'GpsExample' do
   #
   # Note that if you have use_frameworks! enabled, Flipper will not work and
   # you should disable these next few lines.
-  use_flipper!({ 'Flipper' => '0.80.0' })
+  use_flipper!('Flipper' => '0.111.0', 'Flipper-Folly' => '2.6.10')
   post_install do |installer|
     flipper_post_install(installer)
   end
