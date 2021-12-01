@@ -1,4 +1,9 @@
-import { AppRegistry, NativeModules } from 'react-native';
+import {
+  AppRegistry,
+  NativeEventEmitter,
+  NativeModules,
+  Platform,
+} from 'react-native';
 import { BehaviorSubject } from 'rxjs';
 import type { Subscription } from 'rxjs';
 
@@ -133,6 +138,12 @@ export default {
     await Gps.stopGpsService();
   },
   watchLocation(callback: (location: Location) => void): Subscription {
+    if (Platform.OS === 'ios') {
+      const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
+      myModuleEvt.addListener('watchLocation', (location) => {
+        locationFromTask.next(location);
+      });
+    }
     return locationFromTask.subscribe((data) => {
       if (data !== null) {
         callback(data);
