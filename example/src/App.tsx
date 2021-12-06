@@ -1,11 +1,24 @@
 import * as React from 'react';
 import { useState } from 'react';
 
-import { Button, StyleSheet, Text, View } from 'react-native';
+import {
+  Button,
+  FlatList,
+  FlatListProps,
+  LayoutRectangle,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Gps, {
   ActivityRecognitionType,
   Geofence,
   GeofenceTransition,
+  Prediction,
 } from 'react-native-gps';
 import MapView, {
   Circle,
@@ -142,8 +155,107 @@ export default function App() {
     });
   }, [dispatch]);
 
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [showPredictions, setShowPredictions] = useState(false);
+
+  const onChangeText: TextInputProps['onChangeText'] = async (text) => {
+    if (lastLocation) {
+      const newPredictions = await Gps.findAutocompletePredictions(text, {
+        northEastBounds: {
+          latitude,
+          longitude,
+        },
+        southWestBounds: {
+          latitude,
+          longitude,
+        },
+      });
+
+      setShowPredictions(newPredictions.length > 0);
+      setPredictions(newPredictions);
+    }
+  };
+
+  const onFocus: TextInputProps['onFocus'] = () => {
+    Gps.startGooglePlacesAutocompleteSession();
+  };
+
+  let [searchBarLayout, setSearchBarLayout] = useState<LayoutRectangle>({
+    height: 0,
+    width: 0,
+    y: 0,
+    x: 0,
+  });
+
+  const searchBarOnLayout: TextInputProps['onLayout'] = (event) => {
+    setSearchBarLayout(event.nativeEvent.layout);
+  };
+
+  const renderSearchPrediction: FlatListProps<Prediction>['renderItem'] = ({
+    item,
+  }) => {
+    return (
+      <TouchableOpacity
+        style={{
+          margin: 8,
+          padding: 16,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: '#CCC',
+        }}
+        onPress={async () => {
+          console.warn(item);
+          await getPredictionPlace(item);
+        }}
+      >
+        <Text style={styles.predictionText}>{item.attributedFullText}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  async function getPredictionPlace(prediction: Prediction) {
+    setShowPredictions(false);
+    const place = await Gps.getPredictionByPlaceId(prediction.placeID);
+    if (place) {
+      dispatch(
+        gpsSlice.actions.addLocation({
+          latitude: place.coordinate.latitude,
+          longitude: place.coordinate.longitude,
+          accuracy: 0,
+          altitude: 0,
+          bearing: 0,
+          isFromMockProvider: true,
+          speed: 0,
+          time: Date.now(),
+        })
+      );
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <TextInput
+        onLayout={searchBarOnLayout}
+        placeholder="Search"
+        style={styles.searchPlaces}
+        onChangeText={onChangeText}
+        onFocus={onFocus}
+      />
+      {showPredictions && (
+        <View
+          style={[
+            styles.predictionsContainer,
+            { top: searchBarLayout.y + searchBarLayout.height },
+          ]}
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            pointerEvents="box-none"
+            data={predictions}
+            renderItem={renderSearchPrediction}
+            keyExtractor={(prediction) => prediction.placeID}
+          />
+        </View>
+      )}
       <Text style={styles.activity}>{currentActivity}</Text>
       <Button
         disabled={
@@ -180,7 +292,7 @@ export default function App() {
           />
         ))}
       </MapView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -195,5 +307,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
     padding: 16,
+  },
+  searchPlaces: {
+    padding: 16,
+    fontSize: 16,
+  },
+  predictionsContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: 200,
+    zIndex: 1,
+    backgroundColor: 'white',
+  },
+  predictionText: {
+    fontSize: 24,
   },
 });

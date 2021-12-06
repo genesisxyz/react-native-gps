@@ -44,4 +44,14 @@ RCT_EXTERN_METHOD(removeGeofences:(NSArray<NSString *> *)geofencesIds
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(startGooglePlacesAutocompleteSession)
+
+RCT_EXTERN_METHOD(findAutocompletePredictions:(NSString *)query withOptions:(NSDictionary *)options
+                  withResolver:(RCTPromiseResolveBlock)resolve
+                  withRejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(getPredictionByPlaceId:(NSString *)placeId
+                  withResolver:(RCTPromiseResolveBlock)resolve
+                  withRejecter:(RCTPromiseRejectBlock)reject)
+
 @end

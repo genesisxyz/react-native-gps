@@ -102,6 +102,8 @@ PODS:
   - GoogleMaps/Base (3.5.0)
   - GoogleMaps/Maps (3.5.0):
     - GoogleMaps/Base
+  - GooglePlaces (3.5.0):
+    - GoogleMaps/Base (= 3.5.0)
   - libevent (2.1.12)
   - OpenSSL-Universal (1.1.1100)
   - RCTRequired (0.63.4)
@@ -279,6 +281,8 @@ PODS:
     - GoogleMaps (= 3.5.0)
     - React-Core
   - react-native-gps (0.1.0):
+    - GoogleMaps (= 3.5.0)
+    - GooglePlaces (= 3.5.0)
     - React-Core
   - react-native-maps (0.29.3):
     - React-Core
@@ -418,6 +422,7 @@ SPEC REPOS:
     - FlipperKit
     - Google-Maps-iOS-Utils
     - GoogleMaps
+    - GooglePlaces
     - libevent
     - OpenSSL-Universal
     - SocketRocket
@@ -506,6 +511,7 @@ SPEC CHECKSUMS:
   glog: 40a13f7840415b9a77023fbcae0f1e6f43192af3
   Google-Maps-iOS-Utils: c32891ff472eaaa1fca032beedafa1a013af7875
   GoogleMaps: 32ca02de09de357a10ac773f2c70f1986751392d
+  GooglePlaces: be6f19fe8aa6ff0b5bcccfa1b8805cc977ea1450
   libevent: 4049cae6c81cdb3654a443be001fb9bdceff7913
   OpenSSL-Universal: ebc357f1e6bc71fa463ccb2fe676756aff50e88c
   RCTRequired: 082f10cd3f905d6c124597fd1c14f6f2655ff65e
@@ -520,7 +526,7 @@ SPEC CHECKSUMS:
   React-jsinspector: 58aef7155bc9a9683f5b60b35eccea8722a4f53a
   react-native-config: 72d948053a442779b3178fddd571e37f118ef606
   react-native-google-maps: d6a30377b40a338bd09d6ad36ce48dc5d12b5792
-  react-native-gps: f7311a28c6741d7528ad4bb9ba27207acb2668d4
+  react-native-gps: 288ad797d0ca1ff00217b70dfe1a3f7c7089763a
   react-native-maps: 41d01d8e0afcebe32bec9eea3bd945adc1b18f7a
   React-RCTActionSheet: 89a0ca9f4a06c1f93c26067af074ccdce0f40336
   React-RCTAnimation: 1bde3ecc0c104c55df246eda516e0deb03c4e49b

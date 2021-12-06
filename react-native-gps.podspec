@@ -14,6 +14,8 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/genesisxyz/react-native-gps.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
-
+  
+  s.dependency 'GoogleMaps', '3.5.0'
+  s.dependency 'GooglePlaces', '3.5.0'
   s.dependency "React-Core"
 end

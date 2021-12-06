@@ -71,6 +71,24 @@ export type Options = DeepPartial<{
   };
 }>;
 
+export type Prediction = {
+  attributedFullText: string;
+  attributedPrimaryText: string;
+  attributedSecondaryText: string;
+  placeID: string;
+  types: any;
+};
+
+export type Place = {
+  name: string;
+  placeID: string;
+  formattedAddress: string;
+  coordinate: {
+    latitude: number;
+    longitude: number;
+  };
+};
+
 type GpsType = {
   setOptions(options: Options): void;
   startGpsService(): Promise<boolean>;
@@ -86,6 +104,12 @@ type GpsType = {
   lastLocation(): Promise<Location | null>;
   addGeofences(geofences: Geofence[]): Promise<boolean>;
   removeGeofences(geofencesIds: string[]): Promise<boolean>;
+  startGooglePlacesAutocompleteSession(): void;
+  findAutocompletePredictions(
+    query: string,
+    options?: any
+  ): Promise<Prediction[]>;
+  getPredictionByPlaceId(placeId: string): Promise<Place | null>;
 };
 
 const Gps: GpsType = NativeModules.Gps;
@@ -131,6 +155,10 @@ export default {
   addGeofences: Gps.addGeofences,
   removeGeofences: Gps.removeGeofences,
   lastLocation: Gps.lastLocation,
+  startGooglePlacesAutocompleteSession:
+    Gps.startGooglePlacesAutocompleteSession,
+  findAutocompletePredictions: Gps.findAutocompletePredictions,
+  getPredictionByPlaceId: Gps.getPredictionByPlaceId,
   async startGpsService() {
     return await Gps.startGpsService();
   },
