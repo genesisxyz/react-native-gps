@@ -190,6 +190,12 @@ export default {
   watchActivity(
     callback: (activity: ActivityRecognition) => void
   ): Subscription {
+    if (Platform.OS === 'ios') {
+      const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
+      myModuleEvt.addListener('watchActivity', (activity) => {
+        activityRecognitionFromTask.next(activity);
+      });
+    }
     return activityRecognitionFromTask.subscribe((data) => {
       if (data !== null) {
         callback(data);

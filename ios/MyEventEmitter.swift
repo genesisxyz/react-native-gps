@@ -16,6 +16,7 @@ class MyEventEmitter: RCTEventEmitter {
     override func supportedEvents() -> [String]! {
         return [
             "watchLocation",
+            "watchActivity",
         ]
     }
     
@@ -30,6 +31,12 @@ class MyEventEmitter: RCTEventEmitter {
     func locationReceived(location: [String: Any]) {
         if (hasListeners) {
             self.sendEvent(withName: "watchLocation", body: location)
+        }
+    }
+    
+    func activityReceived(activity: [String: Any]) {
+        if (hasListeners) {
+            self.sendEvent(withName: "watchActivity", body: activity)
         }
     }
 }

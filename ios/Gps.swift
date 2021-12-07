@@ -4,6 +4,17 @@ import CoreMotion
 import GooglePlaces
 import GoogleMapsBase
 
+enum ActivityRecognitionType: Int {
+    case InVechicle = 0
+    case OnBicycle = 1
+    case OnFoot = 2
+    case Still = 3
+    case Unknown = 4
+    case Tilting = 5
+    case Walking = 6
+    case Running = 7
+}
+
 @objc(Gps)
 class Gps: NSObject, CLLocationManagerDelegate {
     
@@ -41,6 +52,10 @@ class Gps: NSObject, CLLocationManagerDelegate {
     
     @objc(stopGpsService:withRejecter:)
     func stopGpsService(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
+        locationManager?.stopUpdatingLocation()
+        activityManager?.stopActivityUpdates()
+        locationManager = nil
+        activityManager = nil
         resolve(true)
     }
     
@@ -60,12 +75,40 @@ class Gps: NSObject, CLLocationManagerDelegate {
     
     @objc(startActivityRecognitionUpdates)
     func startActivityRecognitionUpdates() -> Void {
-        
+        activityManager = initializeActivityManager();
+        activityManager?.startActivityUpdates(to: OperationQueue.main) {
+            (motion) in
+            
+            var type: ActivityRecognitionType = .Unknown
+            
+            if let motion = motion {
+                
+                if (motion.cycling) {
+                    type = .OnBicycle
+                } else if (motion.automotive) {
+                    type = .InVechicle
+                } else if (motion.running) {
+                    type = .Running
+                } else if (motion.stationary) {
+                    type = .Still
+                } else if (motion.walking) {
+                    type = .Walking
+                }
+                
+                let activityDict: [String: Any] = [
+                    "type": type,
+                    "confidence": motion.confidence,
+                ]
+                
+                MyEventEmitter.shared?.activityReceived(activity: activityDict)
+            }
+        }
     }
     
     @objc(stopLocationUpdates)
     func stopLocationUpdates() -> Void {
         locationManager?.stopUpdatingLocation()
+        locationManager = nil
     }
     
     @objc(stopGeofenceUpdates)
@@ -75,7 +118,8 @@ class Gps: NSObject, CLLocationManagerDelegate {
     
     @objc(stopActivityRecognitionUpdates)
     func stopActivityRecognitionUpdates() -> Void {
-        
+        activityManager?.stopActivityUpdates()
+        activityManager = nil
     }
     
     @objc(requestLocationPermissions:withRejecter:)
