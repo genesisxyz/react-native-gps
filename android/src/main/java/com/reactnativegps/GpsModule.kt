@@ -11,8 +11,19 @@ import androidx.core.app.ActivityCompat
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.model.RectangularBounds
+import com.google.android.libraries.places.api.model.TypeFilter
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
+
 
 class GpsModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), LifecycleEventListener, PermissionListener {
 
@@ -25,6 +36,11 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
 
     init {
         reactContext.addLifecycleEventListener(this);
+
+        val app = reactContext.packageManager.getApplicationInfo(reactContext.packageName, PackageManager.GET_META_DATA)
+        val bundle = app.metaData
+
+        Places.initialize(reactContext, bundle.getString("com.google.android.geo.API_KEY")!!)
     }
 
     private val gpsServiceConnection: ConnectService by lazy { ConnectService(reactContext, GpsService::class.java) }
@@ -33,6 +49,9 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     private var mRequestActivityPermissionsPromise: Promise? = null
 
     private var isAppForeground = true
+
+    private val placesClient = Places.createClient(reactContext);
+    private var sessionToken: AutocompleteSessionToken? = null
 
     override fun getName(): String {
         return "Gps"
@@ -145,7 +164,7 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     fun requestLocationPermissions(promise: Promise) {
         currentActivity?.run {
             if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 mRequestLocationPermissionsPromise = promise
                 this as PermissionAwareActivity
                 requestPermissions(
@@ -163,7 +182,7 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     fun requestActivityPermissions(promise: Promise) {
         currentActivity?.run {
             if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(applicationContext, "com.google.android.gms.permission.ACTIVITY_RECOGNITION") != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.checkSelfPermission(applicationContext, "com.google.android.gms.permission.ACTIVITY_RECOGNITION") != PackageManager.PERMISSION_GRANTED) {
                 mRequestActivityPermissionsPromise = promise
                 this as PermissionAwareActivity
                 val strings = mutableListOf("com.google.android.gms.permission.ACTIVITY_RECOGNITION")
@@ -225,13 +244,105 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
                     Log.i(TAG, "Geofences removed")
                     promise.resolve(true)
                 })
-                ?.addOnFailureListener(this, OnFailureListener { e ->
-                    Log.i(TAG, "Geofences remove failure $e")
-                    promise.resolve(false)
-                }) ?: promise.resolve(false)
+                        ?.addOnFailureListener(this, OnFailureListener { e ->
+                            Log.i(TAG, "Geofences remove failure $e")
+                            promise.resolve(false)
+                        }) ?: promise.resolve(false)
             }
         } else {
             promise.resolve(false)
+        }
+    }
+
+    @ReactMethod
+    fun startGooglePlacesAutocompleteSession() {
+        sessionToken = AutocompleteSessionToken.newInstance()
+    }
+
+    @ReactMethod
+    fun findAutocompletePredictions(query: String, options: ReadableMap, promise: Promise) {
+
+        val northEastBounds = options.getMap("northEastBounds")
+        val southWestBounds = options.getMap("southWestBounds")
+
+        var bounds: RectangularBounds? = null
+
+        if (northEastBounds != null && southWestBounds != null) {
+
+            bounds = RectangularBounds.newInstance(
+                    LatLng(northEastBounds.getDouble("latitude"), northEastBounds.getDouble("longitude")),
+                    LatLng(southWestBounds.getDouble("latitude"), southWestBounds.getDouble("longitude"))
+            )
+        }
+
+        val request =
+                FindAutocompletePredictionsRequest.builder()
+                        .setLocationBias(bounds)
+                        .setOrigin(LatLng(-33.8749937, 151.2041382))
+                        .setCountries("IT")
+                        .setTypeFilter(TypeFilter.ADDRESS)
+                        .setSessionToken(sessionToken)
+                        .setQuery(query)
+                        .build()
+
+        // val results = mutableListOf<HashMap<String, Any>>()
+        val results = Arguments.createArray()
+
+        placesClient.findAutocompletePredictions(request).addOnSuccessListener { response ->
+
+            for (prediction in response.autocompletePredictions) {
+
+                val result = Arguments.createMap()
+
+                result.putString("attributedFullText", prediction.getFullText(null).toString())
+                result.putString("attributedPrimaryText", prediction.getPrimaryText(null).toString())
+                result.putString("attributedSecondaryText", prediction.getSecondaryText(null).toString())
+                result.putString("placeID", prediction.placeId)
+                // result.putArray("types", prediction.placeTypes)
+
+                results.pushMap(result)
+            }
+
+
+            Log.d(TAG, results.toString())
+
+            promise.resolve(results)
+
+        }.addOnFailureListener { exception ->
+            if (exception is ApiException) {
+                Log.e(TAG, "Place not found: $exception")
+            }
+
+            promise.resolve(results)
+        }
+    }
+
+    @ReactMethod
+    fun getPredictionByPlaceId(placeId: String, promise: Promise) {
+        val placeFields = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG, Place.Field.ADDRESS)
+
+        val fetchPlaceRequest = FetchPlaceRequest.builder(placeId, placeFields).build()
+
+        placesClient.fetchPlace(fetchPlaceRequest).addOnSuccessListener { response ->
+
+            val result = Arguments.createMap()
+
+            val coordinate = Arguments.createMap()
+            coordinate.putDouble("latitude", response.place.latLng!!.latitude)
+            coordinate.putDouble("longitude", response.place.latLng!!.longitude)
+
+            result.putString("name", response.place.name)
+            result.putString("placeID", response.place.id)
+            result.putString("formattedAddress", response.place.address)
+            result.putMap("coordinate", coordinate)
+
+            promise.resolve(result)
+        }.addOnFailureListener { exception ->
+            if (exception is ApiException) {
+                Log.e(TAG, "Place not found: $exception")
+            }
+
+            promise.resolve(null)
         }
     }
 
