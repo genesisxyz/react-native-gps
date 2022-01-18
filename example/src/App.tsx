@@ -74,17 +74,17 @@ export default function App() {
     });
   }
 
-  function addGeofence(event: MapEvent) {
+  async function addGeofence(event: MapEvent) {
     if (tracking && backgroundLocationStarted) {
       const { coordinate } = event.nativeEvent;
       const geofenceMarker: GeofenceColored = {
         ...coordinate,
-        id: `${latitude}${longitude}`,
+        id: `${Date.now()}`,
         radius: 300,
         color: '#ff000016',
       };
       setGeofenceMarkers((state) => [...state, geofenceMarker]);
-      Gps.addGeofences([geofenceMarker]);
+      await Gps.addGeofences([geofenceMarker]);
     }
   }
 
@@ -135,20 +135,19 @@ export default function App() {
       dispatch(gpsSlice.actions.addLocation(newLocation));
     });
     Gps.watchGeofences((geofenceResult) => {
-      geofenceResult.ids.forEach((id) => {
-        setGeofenceMarkers((state) =>
-          state.map((geofenceMarker) => {
-            return {
-              ...geofenceMarker,
+      setGeofenceMarkers((state) =>
+        state.map((geofenceMarker) => {
+          return {
+            ...geofenceMarker,
+            ...(geofenceResult.ids.find((id) => id === geofenceMarker.id) && {
               color:
-                id === geofenceMarker.id &&
                 geofenceResult.transition === GeofenceTransition.Enter
                   ? '#00ff0016'
                   : '#ff000016',
-            };
-          })
-        );
-      });
+            }),
+          };
+        })
+      );
     });
     Gps.watchActivity((activity) => {
       setCurrentActivity(activities[activity.type]);

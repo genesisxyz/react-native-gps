@@ -21,6 +21,7 @@ export type Location = {
 export enum GeofenceTransition {
   Enter = 1,
   Exit,
+  Dwell,
 }
 
 export type GeofenceResult = {
@@ -181,6 +182,13 @@ export default {
   watchGeofences(
     callback: (geofenceResult: GeofenceResult) => void
   ): Subscription {
+    if (Platform.OS === 'ios') {
+      const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
+      myModuleEvt.addListener('watchGeofence', (geofence) => {
+        console.warn(geofence);
+        geofenceFromTask.next(geofence);
+      });
+    }
     return geofenceFromTask.subscribe((data) => {
       if (data !== null) {
         callback(data);

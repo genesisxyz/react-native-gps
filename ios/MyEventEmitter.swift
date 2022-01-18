@@ -12,11 +12,16 @@ class MyEventEmitter: RCTEventEmitter {
         super.init()
         MyEventEmitter.shared = self
     }
+    
+    @objc override static func requiresMainQueueSetup() -> Bool {
+        return false
+    }
 
     override func supportedEvents() -> [String]! {
         return [
             "watchLocation",
             "watchActivity",
+            "watchGeofence",
         ]
     }
     
@@ -37,6 +42,12 @@ class MyEventEmitter: RCTEventEmitter {
     func activityReceived(activity: [String: Any]) {
         if (hasListeners) {
             self.sendEvent(withName: "watchActivity", body: activity)
+        }
+    }
+    
+    func geofenceReceived(geofence: [String: Any]) {
+        if (hasListeners) {
+            self.sendEvent(withName: "watchGeofence", body: geofence)
         }
     }
 }
