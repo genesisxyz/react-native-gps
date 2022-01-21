@@ -49,7 +49,6 @@ class Gps: NSObject, CLLocationManagerDelegate {
     func initializeLocationManagerForGeofencing() -> CLLocationManager {
         let manager = locationManagerForGeofencing ?? CLLocationManager()
         manager.delegate = self
-        manager.requestAlwaysAuthorization()
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
         manager.distanceFilter = 50
@@ -161,6 +160,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
     @objc(requestLocationPermissions:withRejecter:)
     func requestLocationPermissions( resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
         resolve(true)
+        locationManager?.requestAlwaysAuthorization()
     }
 
     @objc(requestActivityPermissions:withRejecter:)
