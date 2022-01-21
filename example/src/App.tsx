@@ -169,7 +169,6 @@ export default function App() {
           longitude,
         },
       });
-
       setShowPredictions(newPredictions.length > 0);
       setPredictions(newPredictions);
     }
@@ -239,32 +238,18 @@ export default function App() {
         onChangeText={onChangeText}
         onFocus={onFocus}
       />
-      {showPredictions && (
-        <View
-          style={[
-            styles.predictionsContainer,
-            { top: searchBarLayout.y + searchBarLayout.height },
-          ]}
-        >
-          <FlatList
-            style={{ flex: 1 }}
-            pointerEvents="box-none"
-            data={predictions}
-            renderItem={renderSearchPrediction}
-            keyExtractor={(prediction) => prediction.placeID}
-          />
-        </View>
-      )}
       <Text style={styles.activity}>{currentActivity}</Text>
-      <Button
-        disabled={
-          (tracking && !backgroundLocationStarted) ||
-          (!tracking && backgroundLocationStarted)
-        }
-        title={!tracking ? 'Start tracking' : 'Stop tracking'}
-        onPress={toggleTracking}
-      />
-      <Button title="Clear locations" onPress={clearLocations} />
+      <View style={styles.buttonContainer}>
+        <Button
+          disabled={
+            (tracking && !backgroundLocationStarted) ||
+            (!tracking && backgroundLocationStarted)
+          }
+          title={!tracking ? 'Start tracking' : 'Stop tracking'}
+          onPress={toggleTracking}
+        />
+        <Button title="Clear locations" onPress={clearLocations} />
+      </View>
       <MapView
         provider={PROVIDER_GOOGLE} // remove if not using Google Maps
         style={styles.map}
@@ -291,6 +276,22 @@ export default function App() {
           />
         ))}
       </MapView>
+      {showPredictions && (
+        <View
+          style={[
+            styles.predictionsContainer,
+            { top: searchBarLayout.y + searchBarLayout.height },
+          ]}
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            pointerEvents="box-none"
+            data={predictions}
+            renderItem={renderSearchPrediction}
+            keyExtractor={(prediction) => prediction.placeID}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -298,6 +299,10 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
+  },
+  buttonContainer: {
+    elevation: 0,
+    zIndex: 0,
   },
   map: {
     flex: 1,
@@ -313,10 +318,11 @@ const styles = StyleSheet.create({
   },
   predictionsContainer: {
     position: 'absolute',
+    elevation: 1,
     width: '100%',
     height: 200,
     zIndex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#FFF',
   },
   predictionText: {
     fontSize: 24,
