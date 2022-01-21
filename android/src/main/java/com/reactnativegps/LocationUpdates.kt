@@ -21,30 +21,29 @@ fun Location.toMap(): WritableMap {
     if (hasAccuracy()) {
         map.putDouble("accuracy", accuracy.toDouble())
     } else {
-        map.putDouble("accuracy", 0.0)
+        map.putNull("accuracy")
     }
 
     if (hasSpeed()) {
         map.putDouble("speed", speed.toDouble())
     } else {
-        map.putDouble("speed", 0.0)
+        map.putNull("speed")
     }
 
     if (hasBearing()) {
         map.putDouble("bearing", bearing.toDouble())
     } else {
-        map.putDouble("bearing", 0.0)
+        map.putNull("bearing")
     }
 
     if (hasAltitude()) {
         map.putDouble("altitude", altitude)
     } else {
-        map.putDouble("altitude", 0.0)
+        map.putNull("altitude")
     }
 
     map.putDouble("latitude", latitude)
     map.putDouble("longitude", longitude)
-    map.putDouble("bearing", bearing.toDouble())
     map.putInt("time", time.toInt()) // TODO: probably not a good idea
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
