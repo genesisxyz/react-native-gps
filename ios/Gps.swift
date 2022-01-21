@@ -130,7 +130,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
 
                 let activityDict: [String: Any] = [
                     "type": type.rawValue,
-                    "confidence": motion.confidence,
+                    "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
                 ]
 
                 MyEventEmitter.shared?.activityReceived(activity: activityDict)
