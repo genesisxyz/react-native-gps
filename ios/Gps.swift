@@ -313,13 +313,13 @@ class Gps: NSObject, CLLocationManagerDelegate {
         switch manager {
         case locationManager:
             if let location = manager.location {
-                let locationDict: [String: Any] = [
+                let locationDict: [String: Any?] = [
                     "latitude": location.coordinate.latitude,
                     "longitude": location.coordinate.longitude,
-                    "speed": location.speed,
-                    "accuracy": location.horizontalAccuracy,
+                    "speed": location.speed < 0 ? nil : location.speed,
+                    "accuracy": location.horizontalAccuracy < 0 ? nil : location.horizontalAccuracy,
                     "altitude": location.altitude,
-                    "bearing": location.course,
+                    "bearing": location.course < 0 ? nil : location.course,
                     "time": Int(location.timestamp.timeIntervalSince1970 * 1000),
                     "isFromMockProvider": false,
                 ]

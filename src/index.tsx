@@ -10,10 +10,10 @@ import type { Subscription } from 'rxjs';
 export type Location = {
   latitude: number;
   longitude: number;
-  speed: number;
-  accuracy: number;
-  altitude: number;
-  bearing: number;
+  speed: number | null;
+  accuracy: number | null;
+  altitude: number | null;
+  bearing: number | null;
   time: number;
   isFromMockProvider?: boolean;
 };

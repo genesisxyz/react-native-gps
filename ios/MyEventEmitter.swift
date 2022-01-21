@@ -33,7 +33,7 @@ class MyEventEmitter: RCTEventEmitter {
         hasListeners = false
     }
     
-    func locationReceived(location: [String: Any]) {
+    func locationReceived(location: [String: Any?]) {
         if (hasListeners) {
             self.sendEvent(withName: "watchLocation", body: location)
         }
