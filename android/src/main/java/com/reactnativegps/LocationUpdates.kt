@@ -70,6 +70,8 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
 
     private var started = false
 
+    private var locationPriority = LocationRequest.PRIORITY_HIGH_ACCURACY
+
     // region ServiceLifecycle
 
     override fun onCreate() {
@@ -162,7 +164,7 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
         return LocationRequest.create().apply {
             interval = UPDATE_INTERVAL_IN_MILLISECONDS
             fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            priority = locationPriority
             smallestDisplacement = 10.0f
         }
     }
@@ -178,7 +180,18 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
     // region ServiceInterface
 
     override fun updateOptions(options: HashMap<String, Any>?) {
+        val androidOptions = options?.get("android") as HashMap<String, Any>?
 
+        val locationOptions = androidOptions?.get("location") as HashMap<String, Any>?
+        val newLocationPriority = locationOptions?.get("priority") as Int?;
+
+        if (newLocationPriority != null) {
+            locationPriority = newLocationPriority
+            val locationRequest = createLocationRequest()
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                mLocationUpdatesTask = mFusedLocationClient?.requestLocationUpdates(locationRequest, mLocationCallback, Looper.getMainLooper())
+            }
+        }
     }
 
     // endregion

@@ -67,8 +67,32 @@ export type Options = DeepPartial<{
       };
       smallIcon: string;
     };
+    location: {
+      priority: AndroidOptionsLocationPriority;
+    };
+  };
+  ios: {
+    location: {
+      priority: IosOptionsLocationPriority;
+    };
   };
 }>;
+
+export enum AndroidOptionsLocationPriority {
+  HighAccuracy = 100,
+  BalancedPowerAccuracy = 102,
+  LowPower = 104,
+  NoPower = 105,
+}
+
+export enum IosOptionsLocationPriority {
+  AccuracyBestForNavigation = -2,
+  AccuracyBest = -1,
+  AccuracyNearestTenMeters = 10,
+  AccuracyHundredMeters = 100,
+  AccuracyKilometer = 1000,
+  AccuracyThreeKilometers = 3000,
+}
 
 export type Prediction = {
   attributedFullText: string;

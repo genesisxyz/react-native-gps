@@ -27,6 +27,8 @@ class Gps: NSObject, CLLocationManagerDelegate {
     var locationManager: CLLocationManager? = nil
     var locationManagerForGeofencing: CLLocationManager? = nil
     var activityManager: CMMotionActivityManager? = nil
+    
+    var desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyBest
 
     var sessionToken: GMSAutocompleteSessionToken? = nil
 
@@ -38,10 +40,12 @@ class Gps: NSObject, CLLocationManagerDelegate {
         let manager = locationManager ?? CLLocationManager()
         manager.delegate = self
         manager.requestAlwaysAuthorization()
+        if #available(iOS 11.0, *) {
+            manager.showsBackgroundLocationIndicator = true
+        }
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
-        manager.distanceFilter = 50
-        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.desiredAccuracy = desiredAccuracy
         manager.activityType = .other
         return manager
     }
@@ -63,8 +67,13 @@ class Gps: NSObject, CLLocationManagerDelegate {
     }
 
     @objc(setOptions:)
-    func setOptions(options: NSDictionary) -> Void {
-
+    func setOptions(options: [String: AnyObject]) -> Void {
+        let iosOptions = options["ios"] as? [String: AnyObject]
+        
+        let locationOptions = iosOptions?["location"] as? [String: AnyObject]
+        if let newLocationPriority = locationOptions?["priority"] as? Double {
+            locationManager?.desiredAccuracy = newLocationPriority
+        }
     }
 
     @objc(startGpsService:withRejecter:)
