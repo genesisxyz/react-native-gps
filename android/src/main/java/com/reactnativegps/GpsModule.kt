@@ -62,22 +62,21 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         gpsServiceConnection.setOptions(options)
 
         Notification.updateNotification(reactContext, options.toHashMap())
-        if (!isAppForeground) {
-            Notification.notificationBuilder?.get()?.run {
-                setContentTitle(Notification.notificationContentTitle)
-                setContentText(Notification.notificationContentText)
 
-                val smallIconId = Notification.getSmallIconId(reactContext)
-                if (smallIconId != 0) {
-                    setSmallIcon(smallIconId);
-                }
+        Notification.notificationBuilder?.get()?.run {
+            setContentTitle(Notification.notificationContentTitle)
+            setContentText(Notification.notificationContentText)
 
-                val notificationManager = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
-                notificationManager.notify(
-                        Notification.notificationId,
-                        build()
-                );
+            val smallIconId = Notification.getSmallIconId(reactContext)
+            if (smallIconId != 0) {
+                setSmallIcon(smallIconId);
             }
+
+            val notificationManager = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
+            notificationManager.notify(
+                    Notification.notificationId,
+                    build()
+            );
         }
     }
 
@@ -351,7 +350,7 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     override fun onHostResume() {
         isAppForeground = true
         gpsServiceConnection.onHostResume()
-        Notification.removeNotification()
+        // Notification.removeNotification()
     }
 
     override fun onHostPause() {

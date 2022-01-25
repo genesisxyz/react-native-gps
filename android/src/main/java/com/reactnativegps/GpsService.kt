@@ -38,8 +38,6 @@ class GpsService : Service(), ServiceInterface {
 
         isBound = true
 
-        stopForeground(true)
-
         return binder
     }
 
@@ -51,8 +49,6 @@ class GpsService : Service(), ServiceInterface {
 
         isBound = false
 
-        startForeground()
-
         return true
     }
 
@@ -63,8 +59,6 @@ class GpsService : Service(), ServiceInterface {
         Log.i(TAG, "onRebind")
 
         isBound = true
-
-        stopForeground(true)
     }
 
     // endregion
@@ -97,6 +91,7 @@ class GpsService : Service(), ServiceInterface {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForeground()
         return START_NOT_STICKY
     }
 
