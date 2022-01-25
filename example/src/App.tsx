@@ -14,12 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Gps, {
-  ActivityRecognitionType,
-  Geofence,
-  GeofenceTransition,
-  Prediction,
-} from 'react-native-gps';
+import Gps, { Prediction } from 'react-native-gps';
 import MapView, {
   Circle,
   MapEvent,
@@ -29,49 +24,29 @@ import MapView, {
 } from 'react-native-maps';
 import { useSelector } from 'react-redux';
 import { RootState, useAppDispatch } from './store';
-import { gpsSlice } from './slices/gps';
+import { GeofenceColored, gpsSlice } from './slices/gps';
 import { appSlice } from './slices/app';
-
-const activities = {
-  [ActivityRecognitionType.InVechicle]: 'Vehicle',
-  [ActivityRecognitionType.OnBicycle]: 'Bicycle',
-  [ActivityRecognitionType.OnFoot]: 'Foot',
-  [ActivityRecognitionType.Running]: 'Running',
-  [ActivityRecognitionType.Still]: 'Still',
-  [ActivityRecognitionType.Tilting]: 'Tilting',
-  [ActivityRecognitionType.Unknown]: 'Unknown',
-  [ActivityRecognitionType.Walking]: 'Walking',
-};
-
-type GeofenceColored = Geofence & { color: string };
 
 export default function App() {
   const dispatch = useAppDispatch();
-  const { lastLocation, locations } = useSelector(
-    (state: RootState) => state.gps
-  );
+  const { lastLocation, locations, geofenceMarkers, currentActivity } =
+    useSelector((state: RootState) => state.gps);
   const { latitude, longitude } = lastLocation || { latitude: 0, longitude: 0 };
 
   const { tracking, backgroundLocationStarted } = useSelector(
     (state: RootState) => state.app
   );
 
-  const [geofenceMarkers, setGeofenceMarkers] = useState<GeofenceColored[]>([]);
-
-  const [currentActivity, setCurrentActivity] = useState(
-    activities[ActivityRecognitionType.Unknown]
-  );
-
   function toggleTracking() {
     dispatch(appSlice.actions.toggleTracking());
   }
 
-  function clearLocations() {
+  async function clearLocations() {
     dispatch(gpsSlice.actions.clearLocations());
-    setGeofenceMarkers((state) => {
-      Gps.removeGeofences(state.map((geofenceMarker) => geofenceMarker.id));
-      return [];
-    });
+    await Gps.removeGeofences(
+      geofenceMarkers.map((geofenceMarker) => geofenceMarker.id)
+    );
+    dispatch(gpsSlice.actions.clearGeofenceMarkers());
   }
 
   async function addGeofence(event: MapEvent) {
@@ -83,7 +58,7 @@ export default function App() {
         radius: 300,
         color: '#ff000016',
       };
-      setGeofenceMarkers((state) => [...state, geofenceMarker]);
+      dispatch(gpsSlice.actions.addGeofenceMarker(geofenceMarker));
       await Gps.addGeofences([geofenceMarker]);
     }
   }
@@ -105,7 +80,7 @@ export default function App() {
       });
     } else {
       Gps.stopGpsService().then(() => {
-        setGeofenceMarkers([]);
+        dispatch(gpsSlice.actions.clearGeofenceMarkers());
         dispatch(appSlice.actions.setBackgroundLocationStarted(false));
       });
     }
@@ -122,37 +97,6 @@ export default function App() {
       Gps.stopActivityRecognitionUpdates();
     }
   }, [tracking, backgroundLocationStarted]);
-
-  React.useEffect(() => {
-    Gps.watchLocation((newLocation) => {
-      Gps.setOptions({
-        android: {
-          notification: {
-            contentText: `${newLocation.latitude};${newLocation.longitude}`,
-          },
-        },
-      });
-      dispatch(gpsSlice.actions.addLocation(newLocation));
-    });
-    Gps.watchGeofences((geofenceResult) => {
-      setGeofenceMarkers((state) =>
-        state.map((geofenceMarker) => {
-          return {
-            ...geofenceMarker,
-            ...(geofenceResult.ids.find((id) => id === geofenceMarker.id) && {
-              color:
-                geofenceResult.transition === GeofenceTransition.Enter
-                  ? '#00ff0016'
-                  : '#ff000016',
-            }),
-          };
-        })
-      );
-    });
-    Gps.watchActivity((activity) => {
-      setCurrentActivity(activities[activity.type]);
-    });
-  }, [dispatch]);
 
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [showPredictions, setShowPredictions] = useState(false);

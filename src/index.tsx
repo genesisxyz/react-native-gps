@@ -4,8 +4,6 @@ import {
   NativeModules,
   Platform,
 } from 'react-native';
-import { BehaviorSubject } from 'rxjs';
-import type { Subscription } from 'rxjs';
 
 export type Location = {
   latitude: number;
@@ -115,34 +113,6 @@ type GpsType = {
 
 const Gps: GpsType = NativeModules.Gps;
 
-let locationFromTask = new BehaviorSubject<Location | null>(null);
-
-let geofenceFromTask = new BehaviorSubject<GeofenceResult | null>(null);
-
-let activityRecognitionFromTask =
-  new BehaviorSubject<ActivityRecognition | null>(null);
-
-const LocationTask = async (location: Location) => {
-  locationFromTask.next(location);
-};
-
-const GeofenceTask = async (geofenceResult: GeofenceResult) => {
-  geofenceFromTask.next(geofenceResult);
-};
-
-const ActivityRecognitionTask = async (activity: ActivityRecognition) => {
-  activityRecognitionFromTask.next(activity);
-};
-
-AppRegistry.registerHeadlessTask('Location', () => LocationTask);
-
-AppRegistry.registerHeadlessTask('Geofence', () => GeofenceTask);
-
-AppRegistry.registerHeadlessTask(
-  'ActivityRecognition',
-  () => ActivityRecognitionTask
-);
-
 export default {
   setOptions: Gps.setOptions,
   requestLocationPermissions: Gps.requestLocationPermissions,
@@ -166,48 +136,28 @@ export default {
   async stopGpsService() {
     await Gps.stopGpsService();
   },
-  watchLocation(callback: (location: Location) => void): Subscription {
-    if (Platform.OS === 'ios') {
+  watchLocation(callback: (location: Location) => Promise<void>) {
+    if (Platform.OS === 'android') {
+      AppRegistry.registerHeadlessTask('Location', () => callback);
+    } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
-      myModuleEvt.addListener('watchLocation', (location) => {
-        locationFromTask.next(location);
-      });
+      myModuleEvt.addListener('watchLocation', callback);
     }
-    return locationFromTask.subscribe((data) => {
-      if (data !== null) {
-        callback(data);
-      }
-    });
   },
-  watchGeofences(
-    callback: (geofenceResult: GeofenceResult) => void
-  ): Subscription {
-    if (Platform.OS === 'ios') {
+  watchGeofences(callback: (geofenceResult: GeofenceResult) => Promise<void>) {
+    if (Platform.OS === 'android') {
+      AppRegistry.registerHeadlessTask('Geofence', () => callback);
+    } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
-      myModuleEvt.addListener('watchGeofence', (geofence) => {
-        console.warn(geofence);
-        geofenceFromTask.next(geofence);
-      });
+      myModuleEvt.addListener('watchGeofence', callback);
     }
-    return geofenceFromTask.subscribe((data) => {
-      if (data !== null) {
-        callback(data);
-      }
-    });
   },
-  watchActivity(
-    callback: (activity: ActivityRecognition) => void
-  ): Subscription {
-    if (Platform.OS === 'ios') {
+  watchActivity(callback: (activity: ActivityRecognition) => Promise<void>) {
+    if (Platform.OS === 'android') {
+      AppRegistry.registerHeadlessTask('ActivityRecognition', () => callback);
+    } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
-      myModuleEvt.addListener('watchActivity', (activity) => {
-        activityRecognitionFromTask.next(activity);
-      });
+      myModuleEvt.addListener('watchActivity', callback);
     }
-    return activityRecognitionFromTask.subscribe((data) => {
-      if (data !== null) {
-        callback(data);
-      }
-    });
   },
 };
