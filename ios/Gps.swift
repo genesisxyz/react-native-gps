@@ -82,6 +82,13 @@ class Gps: NSObject, CLLocationManagerDelegate {
         background.sync {
             locationManager = initializeLocationManager();
         }
+        
+        if #available(iOS 11.0, *) {
+            MyEventEmitter.shared?.watchActivityPermissions(status: CMMotionActivityManager.authorizationStatus().rawValue)
+        } else {
+            MyEventEmitter.shared?.watchActivityPermissions(status: 3) // CMAuthorizationStatus.authorized.rawValue
+        }
+        
         resolve(true)
     }
 
@@ -167,13 +174,13 @@ class Gps: NSObject, CLLocationManagerDelegate {
     }
 
     @objc(requestLocationPermissions:withRejecter:)
-    func requestLocationPermissions( resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
+    func requestLocationPermissions(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
         resolve(true)
         locationManager?.requestAlwaysAuthorization()
     }
 
     @objc(requestActivityPermissions:withRejecter:)
-    func requestActivityPermissions(resolve:RCTPromiseResolveBlock,r eject:RCTPromiseRejectBlock) -> Void {
+    func requestActivityPermissions(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
         resolve(true)
     }
 
@@ -317,6 +324,16 @@ class Gps: NSObject, CLLocationManagerDelegate {
     }
 
     // MARK: CLLocationManagerDelegate
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        MyEventEmitter.shared?.watchLocationPermissions(status: status.rawValue)
+    }
+    
+    @available(iOS 14.0, *)
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        MyEventEmitter.shared?.watchLocationPermissions(status: status.rawValue)
+    }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         switch manager {

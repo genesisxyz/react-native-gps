@@ -4,9 +4,7 @@ import React
 @objc(MyEventEmitter)
 class MyEventEmitter: RCTEventEmitter {
 
-    public static var shared:MyEventEmitter?
-    
-    private var hasListeners = false
+    public static var shared: MyEventEmitter?
 
     override init() {
         super.init()
@@ -22,32 +20,28 @@ class MyEventEmitter: RCTEventEmitter {
             "watchLocation",
             "watchActivity",
             "watchGeofence",
+            "watchLocationPermissions",
+            "watchActivityPermissions",
         ]
     }
     
-    override func startObserving() {
-        hasListeners = true
+    func watchLocationPermissions(status: Int32) {
+        self.sendEvent(withName: "watchLocationPermissions", body: status)
     }
     
-    override func stopObserving() {
-        hasListeners = false
+    func watchActivityPermissions(status: Int) {
+        self.sendEvent(withName: "watchActivityPermissions", body: status)
     }
     
     func locationReceived(location: [String: Any?]) {
-        if (hasListeners) {
-            self.sendEvent(withName: "watchLocation", body: location)
-        }
+        self.sendEvent(withName: "watchLocation", body: location)
     }
     
     func activityReceived(activity: [String: Any]) {
-        if (hasListeners) {
-            self.sendEvent(withName: "watchActivity", body: activity)
-        }
+        self.sendEvent(withName: "watchActivity", body: activity)
     }
     
     func geofenceReceived(geofence: [String: Any]) {
-        if (hasListeners) {
-            self.sendEvent(withName: "watchGeofence", body: geofence)
-        }
+        self.sendEvent(withName: "watchGeofence", body: geofence)
     }
 }

@@ -3,11 +3,13 @@ package com.reactnativegps
 import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.ActivityCompat
+import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
@@ -22,7 +24,6 @@ import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.model.TypeFilter
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
 
 
 class GpsModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), LifecycleEventListener, PermissionListener {
@@ -84,6 +85,9 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
     fun startGpsService(promise: Promise) {
         Log.d(TAG, "GpsService starting...")
         gpsServiceConnection.startService(promise)
+
+        watchLocationPermissions()
+        watchActivityPermissions()
     }
 
     @ReactMethod
@@ -345,12 +349,43 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         }
     }
 
+    private fun watchLocationPermissions() {
+        var granted = false
+        currentActivity?.run {
+            granted = ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        }
+        val myIntent = Intent(reactContext, LocationPermissionEventService::class.java)
+        myIntent.putExtra("granted", granted)
+
+        reactContext.startService(myIntent)
+        HeadlessJsTaskService.acquireWakeLockNow(reactContext)
+    }
+
+    private fun watchActivityPermissions() {
+        var granted = false
+        currentActivity?.run {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                granted = ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
+            } else {
+                granted = ActivityCompat.checkSelfPermission(applicationContext, "com.google.android.gms.permission.ACTIVITY_RECOGNITION") == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        val myIntent = Intent(reactContext, ActivityPermissionEventService::class.java)
+        myIntent.putExtra("granted", granted)
+
+        reactContext.startService(myIntent)
+        HeadlessJsTaskService.acquireWakeLockNow(reactContext)
+    }
+
     // region LifecycleEventListener
 
     override fun onHostResume() {
         isAppForeground = true
         gpsServiceConnection.onHostResume()
         // Notification.removeNotification()
+
+        watchLocationPermissions()
+        watchActivityPermissions()
     }
 
     override fun onHostPause() {
@@ -373,8 +408,10 @@ class GpsModule(private val reactContext: ReactApplicationContext) : ReactContex
         var promise: Promise? = null
         if (requestCode == LOCATION_PERMISSIONS_REQUEST_CODE) {
             promise = mRequestLocationPermissionsPromise
+            watchLocationPermissions()
         } else if (requestCode == ACTIVITY_PERMISSIONS_REQUEST_CODE) {
             promise = mRequestActivityPermissionsPromise
+            watchActivityPermissions()
         }
 
         promise?.run {

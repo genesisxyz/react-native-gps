@@ -12,6 +12,8 @@
   <application>
 
     <service android:name=".GpsService" android:foregroundServiceType="location" />
+    <service android:name=".LocationPermissionEventService" />
+    <service android:name=".ActivityPermissionEventService" />
     <service android:name=".LocationEventService" />
     <service android:name=".GeofenceIntentService" />
     <service android:name=".GeofenceEventService" />

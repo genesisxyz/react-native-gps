@@ -5,6 +5,21 @@ import {
   Platform,
 } from 'react-native';
 
+export enum LocationPermissions {
+  NotDetermined = 0, // iOS only
+  Restricted, // iOS only
+  Denied,
+  Authorized,
+  AuthorizedWhenInUse, // iOS only
+}
+
+export enum ActivityPermissions {
+  NotDetermined = 0, // iOS only
+  Restricted, // iOS only
+  Denied,
+  Authorized,
+}
+
 export type Location = {
   latitude: number;
   longitude: number;
@@ -159,6 +174,46 @@ export default {
   },
   async stopGpsService() {
     await Gps.stopGpsService();
+  },
+  watchLocationPermissions(
+    callback: (status: LocationPermissions) => Promise<void>
+  ) {
+    if (Platform.OS === 'android') {
+      AppRegistry.registerHeadlessTask(
+        'LocationPermission',
+        () => async (data: { granted: boolean }) => {
+          const { granted } = data;
+          await callback(
+            granted
+              ? LocationPermissions.Authorized
+              : LocationPermissions.Denied
+          );
+        }
+      );
+    } else if (Platform.OS === 'ios') {
+      const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
+      myModuleEvt.addListener('watchLocationPermissions', callback);
+    }
+  },
+  watchActivityPermissions(
+    callback: (status: ActivityPermissions) => Promise<void>
+  ) {
+    if (Platform.OS === 'android') {
+      AppRegistry.registerHeadlessTask(
+        'ActivityPermission',
+        () => async (data: { granted: boolean }) => {
+          const { granted } = data;
+          await callback(
+            granted
+              ? ActivityPermissions.Authorized
+              : ActivityPermissions.Denied
+          );
+        }
+      );
+    } else if (Platform.OS === 'ios') {
+      const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
+      myModuleEvt.addListener('watchActivityPermissions', callback);
+    }
   },
   watchLocation(callback: (location: Location) => Promise<void>) {
     if (Platform.OS === 'android') {
