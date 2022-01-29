@@ -342,7 +342,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
                 let locationDict: [String: Any?] = [
                     "latitude": location.coordinate.latitude,
                     "longitude": location.coordinate.longitude,
-                    "speed": location.speed < 0 ? nil : location.speed,
+                    "speed": location.speed < 0 ? nil : Int(location.speed),
                     "accuracy": location.horizontalAccuracy < 0 ? nil : location.horizontalAccuracy,
                     "altitude": location.altitude,
                     "bearing": location.course < 0 ? nil : location.course,
