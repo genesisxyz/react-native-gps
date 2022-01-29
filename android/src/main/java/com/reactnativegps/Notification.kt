@@ -82,7 +82,7 @@ object Notification {
         val androidOptions = options?.get("android") as HashMap<String, Any>?;
 
         val notificationOptions = androidOptions?.get("notification") as HashMap<String, Any>?;
-        val newNotificationId = notificationOptions?.get("id") as Int?;
+        val newNotificationId = notificationOptions?.get("id") as Double?;
         val newNotificationContentTitle = notificationOptions?.get("contentTitle") as String?;
         val newNotificationContentText = notificationOptions?.get("contentText") as String?;
         val newNotificationSmallIcon = notificationOptions?.get("smallIcon") as String?;
@@ -93,7 +93,7 @@ object Notification {
         val newNotificationChannelDescription = notificationChannelOptions?.get("description") as String?;
 
         if (newNotificationId != null) {
-            notificationId = newNotificationId
+            notificationId = newNotificationId.toInt()
         }
 
         if (newNotificationChannelId != null) {
