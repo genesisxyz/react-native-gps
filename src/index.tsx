@@ -215,25 +215,34 @@ export default {
       myModuleEvt.addListener('watchActivityPermissions', callback);
     }
   },
-  watchLocation(callback: (location: Location) => Promise<void>) {
+  watchLocation(callback: (location: Location[]) => void) {
     if (Platform.OS === 'android') {
-      AppRegistry.registerHeadlessTask('Location', () => callback);
+      AppRegistry.registerHeadlessTask(
+        'Location',
+        () => async (location) => callback([location])
+      );
     } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
       myModuleEvt.addListener('watchLocation', callback);
     }
   },
-  watchGeofences(callback: (geofenceResult: GeofenceResult) => Promise<void>) {
+  watchGeofences(callback: (geofenceResult: GeofenceResult) => void) {
     if (Platform.OS === 'android') {
-      AppRegistry.registerHeadlessTask('Geofence', () => callback);
+      AppRegistry.registerHeadlessTask(
+        'Geofence',
+        () => async (geofenceResult) => callback(geofenceResult)
+      );
     } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
       myModuleEvt.addListener('watchGeofence', callback);
     }
   },
-  watchActivity(callback: (activity: ActivityRecognition) => Promise<void>) {
+  watchActivity(callback: (activities: ActivityRecognition[]) => void) {
     if (Platform.OS === 'android') {
-      AppRegistry.registerHeadlessTask('ActivityRecognition', () => callback);
+      AppRegistry.registerHeadlessTask(
+        'ActivityRecognition',
+        () => async (activity) => callback([activity])
+      );
     } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);
       myModuleEvt.addListener('watchActivity', callback);

@@ -8,7 +8,7 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
 
 class LocationPermissionEventService : HeadlessJsTaskService() {
     companion object {
-        private const val TAG = "LocationPermissionEventService"
+        private const val TAG = "LocationPermissionEvent"
     }
 
     override fun getTaskConfig(intent: Intent): HeadlessJsTaskConfig? {

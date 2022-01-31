@@ -28,20 +28,34 @@ const Redux = () => {
 
 AppRegistry.registerComponent(appName, () => Redux);
 
-Gps.watchLocation(async (newLocation) => {
-  Gps.setOptions({
-    android: {
-      notification: {
-        contentText: `${newLocation.latitude};${newLocation.longitude}`,
+Gps.watchActivityPermissions(async () => {
+  console.debug('Activity permissions granted');
+});
+
+Gps.watchLocationPermissions(async () => {
+  console.debug('Location permissions granted');
+});
+
+Gps.watchLocation(async (locations) => {
+  if (locations.length > 0) {
+    const { latitude, longitude } = locations[locations.length - 1];
+    Gps.setOptions({
+      android: {
+        notification: {
+          contentText: `${latitude};${longitude}`,
+        },
       },
-    },
-  });
-  store.dispatch(gpsSlice.actions.addLocation(newLocation));
+    });
+  }
+  store.dispatch(gpsSlice.actions.addLocations(locations));
 });
 Gps.watchGeofences(async (geofenceResult) => {
   console.warn(geofenceResult);
   store.dispatch(gpsSlice.actions.setGeofenceTransition(geofenceResult));
 });
-Gps.watchActivity(async (activity) => {
-  store.dispatch(gpsSlice.actions.setCurrentActivity(activity.type));
+Gps.watchActivity(async (activities) => {
+  if (activities.length > 0) {
+    const lastActivity = activities[activities.length - 1];
+    store.dispatch(gpsSlice.actions.setCurrentActivity(lastActivity.type));
+  }
 });

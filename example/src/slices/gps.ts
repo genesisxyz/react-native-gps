@@ -22,10 +22,10 @@ export const gpsSlice = createSlice({
   name: 'gps',
   initialState,
   reducers: {
-    addLocation(state, action: PayloadAction<Location>) {
+    addLocations(state, action: PayloadAction<Location[]>) {
       const { payload } = action;
-      state.lastLocation = payload;
-      state.locations.push(payload);
+      state.lastLocation = payload[payload.length - 1];
+      state.locations.push(...payload);
     },
     clearLocations(state) {
       state.lastLocation = null;

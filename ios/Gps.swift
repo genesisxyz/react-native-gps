@@ -40,9 +40,6 @@ class Gps: NSObject, CLLocationManagerDelegate {
         let manager = locationManager ?? CLLocationManager()
         manager.delegate = self
         manager.requestAlwaysAuthorization()
-        if #available(iOS 11.0, *) {
-            manager.showsBackgroundLocationIndicator = true
-        }
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
         manager.desiredAccuracy = desiredAccuracy
@@ -55,7 +52,6 @@ class Gps: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
-        manager.distanceFilter = 50
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.activityType = .other
         return manager
@@ -126,31 +122,66 @@ class Gps: NSObject, CLLocationManagerDelegate {
         activityManager = initializeActivityManager();
         activityManager?.startActivityUpdates(to: OperationQueue.main) {
             (motion) in
-
-            var type: ActivityRecognitionType = .Unknown
+            
+            self.getMissingActivityRecognition()
 
             if let motion = motion {
-
-                if (motion.cycling) {
-                    type = .OnBicycle
-                } else if (motion.automotive) {
-                    type = .InVechicle
-                } else if (motion.running) {
-                    type = .Running
-                } else if (motion.stationary) {
-                    type = .Still
-                } else if (motion.walking) {
-                    type = .Walking
-                }
-
-                let activityDict: [String: Any] = [
-                    "type": type.rawValue,
-                    "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
-                ]
-
-                MyEventEmitter.shared?.activityReceived(activity: activityDict)
+                
+                self.sendActivities(motions: [motion])
             }
+            
+            let defaults = UserDefaults.standard
+            defaults.set(Date().timeIntervalSince1970, forKey: "activityRecognitionLastUpdate")
         }
+    }
+    
+    private func sendActivities(motions: [CMMotionActivity]) -> Void {
+        let activitiesDict = motions.map { motion -> [String: Any] in
+            
+            var type: ActivityRecognitionType = .Unknown
+            
+            if (motion.cycling) {
+                type = .OnBicycle
+            } else if (motion.automotive) {
+                type = .InVechicle
+            } else if (motion.running) {
+                type = .Running
+            } else if (motion.stationary) {
+                type = .Still
+            } else if (motion.walking) {
+                type = .Walking
+            }
+
+            let activityDict: [String: Any] = [
+                "type": type.rawValue,
+                "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
+            ]
+
+            return activityDict
+        }
+        
+        MyEventEmitter.shared?.activitiesReceived(activities: activitiesDict)
+    }
+    
+    private func getMissingActivityRecognition() -> Void {
+        
+        let defaults = UserDefaults.standard
+        let activityRecognitionLastUpdate = defaults.double(forKey: "activityRecognitionLastUpdate")
+        
+        if (activityRecognitionLastUpdate == 0) {
+            return
+        }
+        
+        let from = Date(timeIntervalSince1970: activityRecognitionLastUpdate)
+        let to = Date()
+        
+        activityManager?.queryActivityStarting(from: from, to: to, to: OperationQueue.main, withHandler: { motions, error in
+            if let motions = motions {
+                self.sendActivities(motions: motions)
+            }
+        })
+        
+        defaults.set(Date().timeIntervalSince1970, forKey: "activityRecognitionLastUpdate")
     }
 
     @objc(stopLocationUpdates)
@@ -336,22 +367,23 @@ class Gps: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
         switch manager {
         case locationManager:
-            if let location = manager.location {
-                let locationDict: [String: Any?] = [
-                    "latitude": location.coordinate.latitude,
-                    "longitude": location.coordinate.longitude,
-                    "speed": location.speed < 0 ? nil : Int(location.speed),
-                    "accuracy": location.horizontalAccuracy < 0 ? nil : location.horizontalAccuracy,
-                    "altitude": location.altitude,
-                    "bearing": location.course < 0 ? nil : location.course,
-                    "time": Int(location.timestamp.timeIntervalSince1970 * 1000),
+            let locationsDict = locations.map { (e) -> [String: Any?] in
+                [
+                    "latitude": e.coordinate.latitude,
+                    "longitude": e.coordinate.longitude,
+                    "speed": e.speed < 0 ? nil : Int(e.speed),
+                    "accuracy": e.horizontalAccuracy < 0 ? nil : e.horizontalAccuracy,
+                    "altitude": e.altitude,
+                    "bearing": e.course < 0 ? nil : e.course,
+                    "time": Int(e.timestamp.timeIntervalSince1970 * 1000),
                     "isFromMockProvider": false,
                 ]
-
-                MyEventEmitter.shared?.locationReceived(location: locationDict)
             }
+            
+            MyEventEmitter.shared?.locationsReceived(locations: locationsDict)
         default:
             break
         }

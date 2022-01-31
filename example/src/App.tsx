@@ -159,16 +159,18 @@ export default function App() {
     const place = await Gps.getPredictionByPlaceId(prediction.placeID);
     if (place) {
       dispatch(
-        gpsSlice.actions.addLocation({
-          latitude: place.coordinate.latitude,
-          longitude: place.coordinate.longitude,
-          accuracy: 0,
-          altitude: 0,
-          bearing: 0,
-          isFromMockProvider: true,
-          speed: 0,
-          time: Date.now(),
-        })
+        gpsSlice.actions.addLocations([
+          {
+            latitude: place.coordinate.latitude,
+            longitude: place.coordinate.longitude,
+            accuracy: 0,
+            altitude: 0,
+            bearing: 0,
+            isFromMockProvider: true,
+            speed: 0,
+            time: Date.now(),
+          },
+        ])
       );
     }
   }
