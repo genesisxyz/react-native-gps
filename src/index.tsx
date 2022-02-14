@@ -63,6 +63,7 @@ export enum ActivityRecognitionType {
 export type ActivityRecognition = {
   type: ActivityRecognitionType;
   confidence: number;
+  time: number;
 };
 
 type DeepPartial<T> = {

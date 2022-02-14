@@ -24,6 +24,7 @@ class ActivityRecognitionIntentService : IntentService(TAG) {
                     val myIntent = Intent(context, ActivityRecognitionEventService::class.java)
                     myIntent.putExtra("type", detectedActivity.type)
                     myIntent.putExtra("confidence", detectedActivity.confidence)
+                    myIntent.putExtra("time", result.time)
                     context.startService(myIntent)
                     HeadlessJsTaskService.acquireWakeLockNow(context)
                 }

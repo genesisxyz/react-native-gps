@@ -41,8 +41,9 @@ class Gps: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.requestAlwaysAuthorization()
         manager.allowsBackgroundLocationUpdates = true
-        manager.pausesLocationUpdatesAutomatically = false
+        manager.pausesLocationUpdatesAutomatically = true
         manager.desiredAccuracy = desiredAccuracy
+        manager.distanceFilter = 5
         manager.activityType = .other
         return manager
     }
@@ -51,8 +52,9 @@ class Gps: NSObject, CLLocationManagerDelegate {
         let manager = locationManagerForGeofencing ?? CLLocationManager()
         manager.delegate = self
         manager.allowsBackgroundLocationUpdates = true
-        manager.pausesLocationUpdatesAutomatically = false
+        manager.pausesLocationUpdatesAutomatically = true
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = 5
         manager.activityType = .other
         return manager
     }
@@ -91,6 +93,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
     @objc(stopGpsService:withRejecter:)
     func stopGpsService(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
         locationManager?.stopUpdatingLocation()
+        locationManager?.stopMonitoringSignificantLocationChanges()
         locationManagerForGeofencing?.monitoredRegions.forEach { region in
             locationManagerForGeofencing?.stopMonitoring(for: region)
         }
@@ -106,6 +109,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
         let background = DispatchQueue.main
         background.sync {
             locationManager?.startUpdatingLocation()
+            locationManager?.startMonitoringSignificantLocationChanges()
         }
     }
 
@@ -155,6 +159,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
             let activityDict: [String: Any] = [
                 "type": type.rawValue,
                 "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
+                "time": motion.startDate.timeIntervalSince1970 * 1000,
             ]
 
             return activityDict
@@ -187,6 +192,7 @@ class Gps: NSObject, CLLocationManagerDelegate {
     @objc(stopLocationUpdates)
     func stopLocationUpdates() -> Void {
         locationManager?.stopUpdatingLocation()
+        locationManager?.stopMonitoringSignificantLocationChanges()
     }
 
     @objc(stopGeofenceUpdates)
