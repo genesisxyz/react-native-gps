@@ -84,7 +84,10 @@ export type Options = DeepPartial<{
       smallIcon: string;
     };
     location: {
+      interval: number;
+      fastestInterval: number;
       priority: AndroidOptionsLocationPriority;
+      smallestDisplacement: number;
     };
   };
   ios: {

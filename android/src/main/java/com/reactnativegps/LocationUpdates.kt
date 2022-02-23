@@ -70,7 +70,10 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
 
     private var started = false
 
+    private var locationInterval = UPDATE_INTERVAL_IN_MILLISECONDS
+    private var locationFastestInterval = FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS
     private var locationPriority = LocationRequest.PRIORITY_HIGH_ACCURACY
+    private var locationSmallestDisplacement = 10.0f
 
     // region ServiceLifecycle
 
@@ -162,10 +165,10 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
      */
     private fun createLocationRequest(): LocationRequest {
         return LocationRequest.create().apply {
-            interval = UPDATE_INTERVAL_IN_MILLISECONDS
-            fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS
+            interval = locationInterval
+            fastestInterval = locationFastestInterval
             priority = locationPriority
-            smallestDisplacement = 10.0f
+            smallestDisplacement = locationSmallestDisplacement
         }
     }
 
@@ -183,13 +186,31 @@ class LocationUpdates(private val context: Context): ServiceLifecycle, ServiceIn
         val androidOptions = options?.get("android") as HashMap<String, Any>?
 
         val locationOptions = androidOptions?.get("location") as HashMap<String, Any>?
+        val newLocationInterval = locationOptions?.get("interval") as Double?;
+        val newLocationFastestInterval = locationOptions?.get("fastestInterval") as Double?;
         val newLocationPriority = locationOptions?.get("priority") as Double?;
+        val newLocationSmallestDisplacement = locationOptions?.get("smallestDisplacement") as Double?;
+
+        if (newLocationInterval != null) {
+            locationInterval = newLocationInterval.toLong()
+        }
+
+        if (newLocationFastestInterval != null) {
+            locationFastestInterval = newLocationFastestInterval.toLong()
+        }
 
         if (newLocationPriority != null) {
             locationPriority = newLocationPriority.toInt()
+        }
+
+        if (newLocationSmallestDisplacement != null) {
+            locationSmallestDisplacement = newLocationSmallestDisplacement.toFloat()
+        }
+
+        if (newLocationPriority != null || newLocationInterval != null || newLocationFastestInterval != null || newLocationSmallestDisplacement != null) {
             val locationRequest = createLocationRequest()
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                mLocationUpdatesTask = mFusedLocationClient?.requestLocationUpdates(locationRequest, mLocationCallback, Looper.getMainLooper())
+                mLocationUpdatesTask = mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.getMainLooper())
             }
         }
     }
