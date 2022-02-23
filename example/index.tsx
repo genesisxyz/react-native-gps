@@ -53,9 +53,6 @@ Gps.watchGeofences(async (geofenceResult) => {
   console.warn(geofenceResult);
   store.dispatch(gpsSlice.actions.setGeofenceTransition(geofenceResult));
 });
-Gps.watchActivity(async (activities) => {
-  if (activities.length > 0) {
-    const lastActivity = activities[activities.length - 1];
-    store.dispatch(gpsSlice.actions.setCurrentActivity(lastActivity.type));
-  }
+Gps.watchActivity(async (activity) => {
+  store.dispatch(gpsSlice.actions.setCurrentActivity(activity.type));
 });

@@ -138,12 +138,7 @@ export default function App() {
   }) => {
     return (
       <TouchableOpacity
-        style={{
-          margin: 8,
-          padding: 16,
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: '#CCC',
-        }}
+        style={styles.predictionButton}
         onPress={async () => {
           console.warn(item);
           await getPredictionPlace(item);
@@ -230,7 +225,7 @@ export default function App() {
           ]}
         >
           <FlatList
-            style={{ flex: 1 }}
+            style={styles.predictionsList}
             pointerEvents="box-none"
             data={predictions}
             renderItem={renderSearchPrediction}
@@ -262,6 +257,9 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
   },
+  predictionsList: {
+    flex: 1,
+  },
   predictionsContainer: {
     position: 'absolute',
     elevation: 1,
@@ -269,6 +267,12 @@ const styles = StyleSheet.create({
     height: 200,
     zIndex: 1,
     backgroundColor: '#FFF',
+  },
+  predictionButton: {
+    margin: 8,
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#CCC',
   },
   predictionText: {
     fontSize: 24,

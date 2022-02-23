@@ -238,11 +238,11 @@ export default {
       myModuleEvt.addListener('watchGeofence', callback);
     }
   },
-  watchActivity(callback: (activities: ActivityRecognition[]) => void) {
+  watchActivity(callback: (activity: ActivityRecognition) => void) {
     if (Platform.OS === 'android') {
       AppRegistry.registerHeadlessTask(
         'ActivityRecognition',
-        () => async (activity) => callback([activity])
+        () => async (activity) => callback(activity)
       );
     } else if (Platform.OS === 'ios') {
       const myModuleEvt = new NativeEventEmitter(NativeModules.MyEventEmitter);

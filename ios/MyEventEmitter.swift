@@ -37,8 +37,8 @@ class MyEventEmitter: RCTEventEmitter {
         self.sendEvent(withName: "watchLocation", body: locations)
     }
     
-    func activitiesReceived(activities: Array<[String: Any]>) {
-        self.sendEvent(withName: "watchActivity", body: activities)
+    func activityReceived(activity: [String: Any]) {
+        self.sendEvent(withName: "watchActivity", body: activity)
     }
     
     func geofenceReceived(geofence: [String: Any]) {

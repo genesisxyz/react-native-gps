@@ -93,7 +93,6 @@ class Gps: NSObject, CLLocationManagerDelegate {
     @objc(stopGpsService:withRejecter:)
     func stopGpsService(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
         locationManager?.stopUpdatingLocation()
-        locationManager?.stopMonitoringSignificantLocationChanges()
         locationManagerForGeofencing?.monitoredRegions.forEach { region in
             locationManagerForGeofencing?.stopMonitoring(for: region)
         }
@@ -109,7 +108,6 @@ class Gps: NSObject, CLLocationManagerDelegate {
         let background = DispatchQueue.main
         background.sync {
             locationManager?.startUpdatingLocation()
-            locationManager?.startMonitoringSignificantLocationChanges()
         }
     }
 
@@ -126,73 +124,41 @@ class Gps: NSObject, CLLocationManagerDelegate {
         activityManager = initializeActivityManager();
         activityManager?.startActivityUpdates(to: OperationQueue.main) {
             (motion) in
-            
-            self.getMissingActivityRecognition()
 
             if let motion = motion {
                 
-                self.sendActivities(motions: [motion])
+                var type: ActivityRecognitionType = .Unknown
+                
+                if (motion.cycling) {
+                    type = .OnBicycle
+                } else if (motion.automotive) {
+                    type = .InVechicle
+                } else if (motion.running) {
+                    type = .Running
+                } else if (motion.stationary) {
+                    type = .Still
+                } else if (motion.walking) {
+                    type = .Walking
+                }
+
+                let activityDict: [String: Any] = [
+                    "type": type.rawValue,
+                    "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
+                    "time": motion.startDate.timeIntervalSince1970 * 1000,
+                ]
+                
+                MyEventEmitter.shared?.activityReceived(activity: activityDict)
             }
-            
-            let defaults = UserDefaults.standard
-            defaults.set(Date().timeIntervalSince1970, forKey: "activityRecognitionLastUpdate")
         }
     }
     
     private func sendActivities(motions: [CMMotionActivity]) -> Void {
-        let activitiesDict = motions.map { motion -> [String: Any] in
-            
-            var type: ActivityRecognitionType = .Unknown
-            
-            if (motion.cycling) {
-                type = .OnBicycle
-            } else if (motion.automotive) {
-                type = .InVechicle
-            } else if (motion.running) {
-                type = .Running
-            } else if (motion.stationary) {
-                type = .Still
-            } else if (motion.walking) {
-                type = .Walking
-            }
-
-            let activityDict: [String: Any] = [
-                "type": type.rawValue,
-                "confidence": motion.confidence == CMMotionActivityConfidence.low ? 25 : motion.confidence == CMMotionActivityConfidence.medium ? 50 : 75, // TODO: to refactor
-                "time": motion.startDate.timeIntervalSince1970 * 1000,
-            ]
-
-            return activityDict
-        }
         
-        MyEventEmitter.shared?.activitiesReceived(activities: activitiesDict)
-    }
-    
-    private func getMissingActivityRecognition() -> Void {
-        
-        let defaults = UserDefaults.standard
-        let activityRecognitionLastUpdate = defaults.double(forKey: "activityRecognitionLastUpdate")
-        
-        if (activityRecognitionLastUpdate == 0) {
-            return
-        }
-        
-        let from = Date(timeIntervalSince1970: activityRecognitionLastUpdate)
-        let to = Date()
-        
-        activityManager?.queryActivityStarting(from: from, to: to, to: OperationQueue.main, withHandler: { motions, error in
-            if let motions = motions {
-                self.sendActivities(motions: motions)
-            }
-        })
-        
-        defaults.set(Date().timeIntervalSince1970, forKey: "activityRecognitionLastUpdate")
     }
 
     @objc(stopLocationUpdates)
     func stopLocationUpdates() -> Void {
         locationManager?.stopUpdatingLocation()
-        locationManager?.stopMonitoringSignificantLocationChanges()
     }
 
     @objc(stopGeofenceUpdates)
